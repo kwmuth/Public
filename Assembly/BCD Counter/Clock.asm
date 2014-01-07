@@ -23,6 +23,10 @@ DSEG at 30H
 BCD_count: ds 3
 Cnt_10ms:  ds 1
 
+BSEG 
+Meridiem:	dbit 1
+
+
 CSEG
 
 ; Look-up table for 7-segment displays
@@ -54,21 +58,35 @@ ISR_timer2:
 	ljmp min
 L11:	ljmp Display
 	
-min:mov a, BCD_count+1
+min:mov BCD_count+0, #00H
+	mov a, BCD_count+1
 	add a, #1
 	da a
 	mov BCD_count+1, a
-	jz hour
-	ljmp Display
+	cjne A, #60H, L22
+	ljmp hour
+L22:	ljmp Display
 	
-hour:mov a, BCD_count+2
+hour:mov BCD_count+1,#00H
+	mov a, BCD_count+2
 	add a, #1
 	da a
 	mov BCD_count+2, a
+	cjne A,#13H, L33
+	mov BCD_count+2, #00H
+	cpl meridiem
+	jnb AM
+	jb PM
+AM: HEX0, #08H
+	ljmp Display
+PM: HEX0, #0CH
+
+L33: ljmp Display
 
 Display:
 	mov dptr, #myLUT
 ; Display Digit 1
+	mov A, BCD_count+0
     anl A, #0FH
     movc A, @A+dptr
     mov HEX2, A
@@ -156,8 +174,12 @@ myprogram:
     mov RCAP2L,#low(TIMER2_RELOAD)
     setb TR2
     setb ET2
+    mov HEX0, #08H
     
-    mov BCD_count, #0
+    mov BCD_count+0, #0
+    mov BCD_count+1, #0
+    mov BCD_count+2, #0
+    clr meridiem
     mov Cnt_10ms, #0
      
     setb EA  ; Enable all interrupts
