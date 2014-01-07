@@ -54,34 +54,30 @@ ISR_timer2:
 	add a, #1
 	da a
 	mov BCD_count+0, a
-	cjne A, #60H, L11
-	ljmp min
-L11:	ljmp Display
+	cjne A, #60H, Display
+	ljmp Min
 	
-min:mov BCD_count+0, #00H
+Min:mov BCD_count+0, #00H
 	mov a, BCD_count+1
 	add a, #1
 	da a
 	mov BCD_count+1, a
-	cjne A, #60H, L22
-	ljmp hour
-L22:	ljmp Display
+	cjne A, #60H, Display
+	ljmp Hour
 	
-hour:mov BCD_count+1,#00H
+Hour:mov BCD_count+1,#00H
 	mov a, BCD_count+2
 	add a, #1
 	da a
 	mov BCD_count+2, a
-	cjne A,#13H, L33
+	cjne A,#13H, Display
 	mov BCD_count+2, #00H
 	cpl meridiem
-	jnb AM
-	jb PM
-AM: HEX0, #08H
+	jnb meridiem, AM
+	jb meridiem, PM
+AM: mov HEX0, #08H
 	ljmp Display
-PM: HEX0, #0CH
-
-L33: ljmp Display
+PM: mov HEX0, #0CH
 
 Display:
 	mov dptr, #myLUT
