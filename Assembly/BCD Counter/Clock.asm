@@ -6,7 +6,7 @@ $MODDE2
 
 CLK EQU 33333333
 FREQ_0 EQU 2000
-FREQ_2 EQU 100
+FREQ_2 EQU 200000
 TIMER0_RELOAD EQU 65536-(CLK/(12*2*FREQ_0))
 TIMER2_RELOAD EQU 65536-(CLK/(12*FREQ_2))
 
@@ -21,7 +21,11 @@ org 002BH
 
 DSEG at 30H
 BCD_count: ds 3
+NewTime_count: ds 3
+AlarmCount: ds 3
 Cnt_10ms:  ds 1
+sec		: ds 2
+hours	: ds 2
 
 BSEG 
 Meridiem:	dbit 1
@@ -47,8 +51,19 @@ ISR_timer2:
 	inc a
 	mov Cnt_10ms, a
 	
-	cjne a, #100, do_nothing
+	mov NewTime_count+0,#0
+	mov NewTime_count+1,#0
+	mov NewTime_count+2,#12H
 	
+	cjne a, #100, do_nothing1
+	
+	jb SWA.0, M1
+	jnb SWA.0, Continue
+	
+M1: lcall ClearDisplay
+	lcall SetTime
+	
+Continue:
 	mov Cnt_10ms, #0
 	mov a, BCD_count+0
 	add a, #1
@@ -70,15 +85,21 @@ Hour:mov BCD_count+1,#00H
 	add a, #1
 	da a
 	mov BCD_count+2, a
-	cjne A,#13H, Display
-	mov BCD_count+2, #00H
+	cjne A, #12H, M8
+CPLMeridiem:
 	cpl meridiem
 	jnb meridiem, AM
 	jb meridiem, PM
 AM: mov HEX0, #08H
 	ljmp Display
 PM: mov HEX0, #0CH
+M8:	cjne A,#13H, Display
+	mov BCD_count+2, #1H
+	
 
+do_nothing1:
+	ljmp do_nothing
+	
 Display:
 	mov dptr, #myLUT
 ; Display Digit 1
@@ -92,34 +113,30 @@ Display:
     anl A, #0FH
     movc A, @A+dptr
     mov HEX3, A	
-    
 ; Display digit 3
 	mov A, BCD_count+1
 	anl A, #0FH
 	movc A, @A+dptr
-	mov HEX4, A
-	
+	mov HEX4, A	
 ;Display digit 4
 	mov A, BCD_count+1
 	swap A
 	anl A, #0FH
 	movc A, @A+dptr
 	mov HEX5, A
-	
 ;Display digit 5
 	mov A, BCD_count+2
 	anl A, #0FH
 	movc A, @A+dptr
-	mov HEX5, A
+	mov HEX6, A
 
 ;Display digit 6
 	mov A, BCD_count+2
 	swap A
 	anl A, #0FH
 	movc A, @A+dptr
-	mov HEX6, A
+	mov HEX7, A
 	
-
 do_nothing:
 	pop dph
 	pop dpl
@@ -128,12 +145,157 @@ do_nothing:
 	
 	reti
 
+;SetAlarm:
+;	jnb SWA.3, SetAlarm
+;	jb SWA.4, SetAlarmMin
+;	jb SWA.5, SetAlarmHour
+;	lcall MoveToBCD2
+;	ret
+
+;SetAlarmMin:
+;	jnb SWA.3, SetAlarm
+;	jnb SWA.4, SetAlarmMin
+;	mov a, AlarmCount+1
+;	add a, #1
+;	da a
+;	cjne a, #60H, M5
+;M4:	mov min, #60H
+;	clr a
+;M5:	mov AlarmCount+1, a
+;	lcall DisplaySetTime2
+;	jb SWA.4, WaitSW4
+;WaitSW4:
+;	jb SWA.4, WaitSW4
+;	sjmp SetAlarm
+	
+
 ISR_timer0:
 	cpl P0.0
     mov TH0, #high(TIMER0_RELOAD)
     mov TL0, #low(TIMER0_RELOAD)
 	reti
+ 
+SetTime:
+	jb SWA.1, SetTimeMin
+	jb SWA.2, SetTimeHour
+	jb SWA.0, SetTime
+	lcall MoveToBCD											                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+	ret
+
+SetTimeMin:
+	jnb SWA.0, SetTime
+	jnb SWA.1, SetTimeMin
+	mov a, NewTime_count+1
+	add a, #1
+	da a
+	cjne a, #60H, M5
+M4:	mov min, #60H
+	clr a
+M5:	mov NewTime_count+1, a
+	lcall DisplaySetTime
+	jb SWA.1, WaitSW1
+WaitSW1:
+	jb SWA.1, WaitSW1
+	sjmp SetTime
 	
+SetTimeHour:
+	jnb SWA.0, SetTime
+	jnb SWA.2, SetTimeHour
+	mov a, NewTime_count+2
+	add a, #1
+	da a
+	cjne a, #13H, M7
+M6:	mov a, #1H
+	da a
+M7:	mov NewTime_count+2, a
+	lcall DisplaySetTime
+	lcall AMPM
+	jb SWA.2, WaitSW2
+WaitSW2:
+	jb SWA.2, WaitSW2
+	sjmp SetTime
+
+AMPM:
+	djnz hours, return
+	cpl meridiem 
+	jnb meridiem, ChangeToAM
+	jb meridiem, ChangeToPM
+ChangeToAM:
+	mov HEX0, #08H
+	sjmp SetHourVar
+ChangeToPM:
+	mov HEX0, #0CH
+SetHourVar:
+	mov hours, #12D
+return:
+	ret	
+
+MoveToBCD:
+	mov BCD_count+0, NewTime_count+0
+	mov BCD_count+1, NewTime_count+1
+	mov BCD_count+2, NewTime_count+2
+	ret
+	
+MoveToBCD2:
+	mov BCD_count+0, AlarmCount+0
+	mov BCD_count+1, AlarmCount+1
+	mov BCD_count+2, AlarmCount+2
+	ret
+	
+	
+DisplaySetTime:
+	mov dptr, #myLUT
+	
+; Display Digit 1
+	mov A, NewTime_count+0
+    anl A, #0FH
+    movc A, @A+dptr
+    mov HEX2, A
+    
+; Display Digit 2
+    mov A, NewTime_count+0
+    swap A
+    anl A, #0FH
+    movc A, @A+dptr
+    mov HEX3, A	
+    
+; Display digit 3
+	mov A, NewTime_count+1
+	anl A, #0FH
+	movc A, @A+dptr
+	mov HEX4, A
+	
+;Display digit 4
+	mov A, NewTime_count+1
+	swap A
+	anl A, #0FH
+	movc A, @A+dptr
+	mov HEX5, A
+	
+;Display digit 5
+	mov A, NewTime_count+2
+	anl A, #0FH
+	movc A, @A+dptr
+	mov HEX6, A
+
+;Display digit 6
+	mov A, NewTime_count+2
+	swap A
+	anl A, #0FH
+	movc A, @A+dptr
+	mov HEX7, A
+	ret
+
+ClearDisplay:
+	mov HEX0, #08H
+    mov HEX2, #40H
+    mov HEX3, #40H
+    mov HEX4, #40H
+    mov HEX5, #40H
+    mov HEX6, #0A4H
+    mov HEX7, #0F9H
+    ret
+    
 ;For a 33.33MHz clock, one cycle takes 30ns
 WaitHalfSec:
 	mov R2, #90
@@ -172,11 +334,17 @@ myprogram:
     setb ET2
     mov HEX0, #08H
     
+    mov a, #12H
+    da a
+    
     mov BCD_count+0, #0
     mov BCD_count+1, #0
-    mov BCD_count+2, #0
+    mov BCD_count+2, a
     clr meridiem
     mov Cnt_10ms, #0
+    
+    mov sec, #60
+    mov hours, #12
      
     setb EA  ; Enable all interrupts
 
