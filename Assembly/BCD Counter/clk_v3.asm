@@ -150,22 +150,25 @@ Init_Timer0:
     ret
 
 CheckAlarm:
-	mov a, hours
-	mov b, AlarmCount+2
-	subb a,b
-	jz CheckMin
+;	mov a, hours
+;	mov b, AlarmCount+2
+;	subb a,b
+;	jz CheckMin
 ReturnISR:
 	ret
-CheckMin:
-	mov a, minutes
-	mov b, AlarmCount+1
-	subb a, b
-	jz CheckSec
+;CheckMin:
+;	mov a, minutes
+;	mov b, AlarmCount+1
+;	subb a, b
+;	clr c
+;	jz CheckSec
 CheckSec:
 	mov a, seconds
 	mov b, AlarmCount+0
 	subb a,b 
+	clr c
 	jz SetLED
+	ljmp ReturnISR
 SetLED:
 	setb LEDG.3
 	sjmp ReturnISR
