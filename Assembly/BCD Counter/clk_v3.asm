@@ -189,17 +189,18 @@ return:
 	ret
 
 SetAlarm:
-;	jb KEY.1, SetAlarm
+	jb KEY.1, M6
 	setb LEDG.2
-;;	jnb KEY.1, $
-;	mov a, AlarmCount+0
- ;   add a, #1
- ;   da a
- ;   mov AlarmCount+0, a
- ;   cjne A, #60H, DisplayAlarmVal
- ;   mov AlarmCount+0, #0
-	jb SWA.1, SetAlarm
+	jnb KEY.1, $
+	mov a, AlarmCount+0
+    add a, #1
+    da a
+    mov AlarmCount+0, a
+    cjne A, #60H, DisplayAlarmVal
+    mov AlarmCount+0, #0
+    ljmp DisplayAlarmVal
 	clr LEDG.2
+M6:	jb SWA.1, SetAlarm
 	ljmp M4
 	
 myprogram:
@@ -212,6 +213,10 @@ myprogram:
 	mov seconds, #00H
 	mov minutes, #00H
 	mov hours, #12H
+	
+	mov AlarmCount+0, #00H
+	mov AlarmCount+1, #00H
+	mov AlarmCount+2, #12H
 	
 	clr meridiem
 	mov HEX0, #08H
