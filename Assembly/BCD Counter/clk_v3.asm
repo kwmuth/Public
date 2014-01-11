@@ -19,6 +19,7 @@ AlarmCount:	ds 3
 
 BSEG
 meridiem:	dbit 1
+meridiemAlarm: dbit 1
 
 CSEG
 
@@ -201,11 +202,26 @@ M7: jb KEY.3, M9
 	add a, #1
 	da a
 	mov AlarmCount+2, a
+	lcall AlarmAMPM
     cjne A, #13H, DisplayAlarmVal
     mov AlarmCount+2, #1H
     ljmp DisplayAlarmVal
 M9:	jb SWA.1, SetAlarm
 	ljmp M4
+	
+AlarmAMPM:
+	mov a, AlarmCount+2
+	cjne a, #12H, returnAlarm
+	cpl meridiemAlarm
+	jnb meridiemAlarm, ChangeToAMAlarm
+	jb meridiemAlarm, ChangeToPMAlarm
+ChangeToAMAlarm:
+	mov HEX0, #08H
+	sjmp return
+ChangeToPMAlarm:
+	mov HEX0, #0CH
+returnAlarm:
+	ret
 
 AMPM:
 	mov a, hours
@@ -222,6 +238,9 @@ return:
 	ret
 
 SetAlarm1:
+	mov AlarmCount+0, #00H
+	mov AlarmCount+1, #00H
+	mov AlarmCount+2, #12H
 	ljmp SetAlarm
 	
 myprogram:
@@ -240,6 +259,7 @@ myprogram:
 	mov AlarmCount+2, #12H
 	
 	clr meridiem
+	clr meridiemAlarm
 	mov HEX0, #08H
 
 	lcall Init_Timer0
