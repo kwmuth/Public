@@ -52,7 +52,10 @@ ISR_Timer0:
     cjne A, #100, ISR_Timer0_L0
     mov count10ms, #0
     
-    mov a, seconds
+
+
+    
+	mov a, seconds
     add a, #1
     da a
     mov seconds, a
@@ -84,10 +87,19 @@ M8: cjne A, #13H, ISR_Timer0_L0
     
 ISR_Timer0_L0:
 	jb SWA.1, do_nothing
+	
 	; Update the display.  This happens every 10 ms
 	mov dptr, #myLUT
 
-	mov a, seconds
+	jnb meridiem, InitMeridiemAM
+	jb meridiem, InitMeridiemPM
+InitMeridiemAM:
+	mov HEX0, #08H
+	ljmp M15
+InitMeridiemPM:
+	mov HEX0, #0CH
+
+M15:mov a, seconds
 	anl a, #0fH
 	movc a, @a+dptr
 	mov HEX2, a
@@ -119,7 +131,7 @@ ISR_Timer0_L1:
 	anl a, #0fH
 	movc a, @a+dptr
 	mov HEX7, a
-
+	
 	; Restore used registers
 do_nothing:
 	pop dpl
