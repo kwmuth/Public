@@ -150,7 +150,7 @@
 0000            145   
 0000              6   
 0000              7   org 0000H
-0000 02019C       8            ljmp myprogram
+0000 0201B1       8            ljmp myprogram
 0003              9            
 000B             10   org 000BH
 000B 020019      11            ljmp ISR_timer0
@@ -297,188 +297,189 @@
 00D3 22         150       ret
 00D4            151   
 00D4            152   CheckAlarm:
-00D4            153   ;        mov a, hours
-00D4            154   ;        mov b, AlarmCount+2
-00D4            155   ;        subb a,b
-00D4            156   ;        jz CheckMin
-00D4            157   ReturnISR:
-00D4 22         158            ret
-00D5            159   ;CheckMin:
-00D5            160   ;        mov a, minutes
-00D5            161   ;        mov b, AlarmCount+1
-00D5            162   ;        subb a, b
-00D5            163   ;        clr c
-00D5            164   ;        jz CheckSec
-00D5            165   CheckSec:
-00D5 E531       166            mov a, seconds
-00D7 8534F0     167            mov b, AlarmCount+0
-00DA 95F0       168            subb a,b 
-00DC C3         169            clr c
-00DD 6003       170            jz SetLED
-00DF 0200D4     171            ljmp ReturnISR
-00E2            172   SetLED:
-00E2 D2FB       173            setb LEDG.3
-00E4 80EE       174            sjmp ReturnISR
-00E6            175   
-00E6            176   
-00E6            177   DisplayAlarmVal:
-00E6 90000E     178            mov dptr, #myLUT        
-00E9            179   ; Display Digit 1
-00E9 E534       180            mov A, AlarmCount+0
-00EB 540F       181       anl A, #0FH
-00ED 93         182       movc A, @A+dptr
-00EE F593       183       mov HEX2, A   
-00F0            184   ; Display Digit 2
-00F0 E534       185       mov A, AlarmCount+0
-00F2 C4         186       swap A
-00F3 540F       187       anl A, #0FH
-00F5 93         188       movc A, @A+dptr
-00F6 F594       189       mov HEX3, A   
-00F8            190   ; Display digit 3
-00F8 E535       191            mov A, AlarmCount+1
-00FA 540F       192            anl A, #0FH
-00FC 93         193            movc A, @A+dptr
-00FD F58E       194            mov HEX4, A     
-00FF            195   ;Display digit 4
-00FF E535       196            mov A, AlarmCount+1
-0101 C4         197            swap A
-0102 540F       198            anl A, #0FH
-0104 93         199            movc A, @A+dptr
-0105 F58F       200            mov HEX5, A     
-0107            201   ;Display digit 5
-0107 E536       202            mov A, AlarmCount+2
-0109 540F       203            anl A, #0FH
-010B 93         204            movc A, @A+dptr
-010C F596       205            mov HEX6, A
-010E            206   ;Display digit 6
-010E E536       207            mov A, AlarmCount+2
-0110 C4         208            swap A
-0111 540F       209            anl A, #0FH
-0113 93         210            movc A, @A+dptr
-0114 F597       211            mov HEX7, A
-0116 020119     212            ljmp SetAlarm
-0119            213   
-0119            214   SetAlarm:
-0119 20F913     215            jb KEY.1, M6
-011C 30F9FD     216            jnb KEY.1, $
-011F E534       217            mov a, AlarmCount+0
-0121 2401       218       add a, #1
-0123 D4         219       da a
-0124 F534       220       mov AlarmCount+0, a
-0126 B460BD     221       cjne A, #60H, DisplayAlarmVal
-0129 753400     222       mov AlarmCount+0, #0
-012C 0200E6     223       ljmp DisplayAlarmVal
-012F 20FA13     224   M6:      jb KEY.2, M7
-0132 30FAFD     225       jnb KEY.2, $
-0135 E535       226       mov a, AlarmCount+1
-0137 2401       227            add a, #1
-0139 D4         228            da a
-013A F535       229            mov AlarmCount+1, a
-013C B460A7     230       cjne A, #60H, DisplayAlarmVal
-013F 753500     231       mov AlarmCount+1, #0
-0142 0200E6     232       ljmp DisplayAlarmVal
-0145 20FB16     233   M7: jb KEY.3, M9
-0148 30FBFD     234            jnb KEY.3, $
-014B E536       235            mov a, AlarmCount+2
-014D 2401       236            add a, #1
-014F D4         237            da a
-0150 F536       238            mov AlarmCount+2, a
-0152 120164     239            lcall AlarmAMPM
-0155 B4138E     240       cjne A, #13H, DisplayAlarmVal
-0158 753601     241       mov AlarmCount+2, #1H
-015B 0200E6     242       ljmp DisplayAlarmVal
-015E 20E9B8     243   M9:      jb SWA.1, SetAlarm
-0161 0201CC     244            ljmp M4
-0164            245            
-0164            246   AlarmAMPM:
-0164 E536       247            mov a, AlarmCount+2
-0166 B41210     248            cjne a, #12H, returnAlarm
-0169 B201       249            cpl meridiemAlarm
-016B 300103     250            jnb meridiemAlarm, ChangeToAMAlarm
-016E 200105     251            jb meridiemAlarm, ChangeToPMAlarm
-0171            252   ChangeToAMAlarm:
-0171 759108     253            mov HEX0, #08H
-0174 8019       254            sjmp return
-0176            255   ChangeToPMAlarm:
-0176 75910C     256            mov HEX0, #0CH
-0179            257   returnAlarm:
-0179 22         258            ret
-017A            259   
-017A            260   AMPM:
-017A E533       261            mov a, hours
-017C B41210     262            cjne a, #12H, return
-017F B200       263            cpl meridiem
-0181 300003     264            jnb meridiem, ChangeToAM
-0184 200005     265            jb meridiem, ChangeToPM
-0187            266   ChangeToAM:
-0187 759108     267            mov HEX0, #08H
-018A 8003       268            sjmp return
-018C            269   ChangeToPM:
-018C 75910C     270            mov HEX0, #0CH
-018F            271   return:
-018F 22         272            ret
-0190            273   
-0190            274   SetAlarm1:
-0190 753400     275            mov AlarmCount+0, #00H
-0193 753500     276            mov AlarmCount+1, #00H
-0196 753612     277            mov AlarmCount+2, #12H
-0199 020119     278            ljmp SetAlarm
-019C            279            
-019C            280   myprogram:
-019C 75817F     281            mov SP, #7FH
-019F 75E800     282            mov LEDRA,#0
-01A2 759500     283            mov LEDRB,#0
-01A5 759E00     284            mov LEDRC,#0
-01A8 75F800     285            mov LEDG,#0
-01AB            286            
-01AB 753101     287            mov seconds, #01H
-01AE 753200     288            mov minutes, #00H
-01B1 753312     289            mov hours, #12H
-01B4            290            
-01B4 753400     291            mov AlarmCount+0, #00H
-01B7 753500     292            mov AlarmCount+1, #00H
-01BA 753612     293            mov AlarmCount+2, #12H
-01BD            294            
-01BD C200       295            clr meridiem
-01BF C201       296            clr meridiemAlarm
-01C1 759108     297            mov HEX0, #08H
-01C4            298   
-01C4 1200C2     299            lcall Init_Timer0
-01C7 D2AF       300       setb EA  ; Enable all interrupts
-01C9            301   
-01C9            302   M0:
-01C9 20E9C4     303            jb SWA.1, SetAlarm1
-01CC 30E8FA     304   M4:      jnb SWA.0, M0
-01CF 20FB13     305            jb KEY.3, M1
-01D2 30FBFD     306       jnb KEY.3, $
-01D5 E533       307       mov a, hours
-01D7 2401       308            add a, #1
-01D9 D4         309            da a
-01DA F533       310            mov hours, a
-01DC 12017A     311            lcall AMPM
-01DF B41303     312       cjne A, #13H, M1
-01E2 753301     313       mov hours, #1
-01E5            314   
-01E5            315   M1:      
-01E5 20FA10     316            jb KEY.2, M2
-01E8 30FAFD     317       jnb KEY.2, $
-01EB E532       318       mov a, minutes
-01ED 2401       319            add a, #1
-01EF D4         320            da a
-01F0 F532       321            mov minutes, a
-01F2 B46003     322       cjne A, #60H, M2
-01F5 753201     323       mov minutes, #1
-01F8            324   
-01F8            325   M2:      
-01F8 20F910     326            jb KEY.1, M3
-01FB 30F9FD     327            jnb KEY.1, $
-01FE E531       328            mov a, seconds
-0200 2401       329            add a, #1
-0202 D4         330            da a
-0203 F531       331            mov seconds, a
-0205 B46003     332       cjne A, #60H, M3
-0208 753101     333       mov seconds, #1
-020B            334   
-020B            335   M3:      
-020B 0201C9     336            ljmp M0
-020E            337   END
+00D4 E533       153            mov a, hours
+00D6 8536F0     154            mov b, AlarmCount+2
+00D9 95F0       155            subb a,b
+00DB 6001       156            jz CheckMin
+00DD            157   ReturnISR:
+00DD 22         158            ret
+00DE            159   CheckMin:
+00DE E532       160            mov a, minutes
+00E0 8535F0     161            mov b, AlarmCount+1
+00E3 95F0       162            subb a, b
+00E5 C3         163            clr c
+00E6 6002       164            jz CheckSec
+00E8 80F3       165            sjmp ReturnISR
+00EA            166   CheckSec:
+00EA E531       167            mov a, seconds
+00EC 8534F0     168            mov b, AlarmCount+0
+00EF 95F0       169            subb a,b 
+00F1 C3         170            clr c
+00F2 6003       171            jz SetLED
+00F4 0200DD     172            ljmp ReturnISR
+00F7            173   SetLED:
+00F7 D2FB       174            setb LEDG.3
+00F9 80E2       175            sjmp ReturnISR
+00FB            176   
+00FB            177   
+00FB            178   DisplayAlarmVal:
+00FB 90000E     179            mov dptr, #myLUT        
+00FE            180   ; Display Digit 1
+00FE E534       181            mov A, AlarmCount+0
+0100 540F       182       anl A, #0FH
+0102 93         183       movc A, @A+dptr
+0103 F593       184       mov HEX2, A   
+0105            185   ; Display Digit 2
+0105 E534       186       mov A, AlarmCount+0
+0107 C4         187       swap A
+0108 540F       188       anl A, #0FH
+010A 93         189       movc A, @A+dptr
+010B F594       190       mov HEX3, A   
+010D            191   ; Display digit 3
+010D E535       192            mov A, AlarmCount+1
+010F 540F       193            anl A, #0FH
+0111 93         194            movc A, @A+dptr
+0112 F58E       195            mov HEX4, A     
+0114            196   ;Display digit 4
+0114 E535       197            mov A, AlarmCount+1
+0116 C4         198            swap A
+0117 540F       199            anl A, #0FH
+0119 93         200            movc A, @A+dptr
+011A F58F       201            mov HEX5, A     
+011C            202   ;Display digit 5
+011C E536       203            mov A, AlarmCount+2
+011E 540F       204            anl A, #0FH
+0120 93         205            movc A, @A+dptr
+0121 F596       206            mov HEX6, A
+0123            207   ;Display digit 6
+0123 E536       208            mov A, AlarmCount+2
+0125 C4         209            swap A
+0126 540F       210            anl A, #0FH
+0128 93         211            movc A, @A+dptr
+0129 F597       212            mov HEX7, A
+012B 02012E     213            ljmp SetAlarm
+012E            214   
+012E            215   SetAlarm:
+012E 20F913     216            jb KEY.1, M6
+0131 30F9FD     217            jnb KEY.1, $
+0134 E534       218            mov a, AlarmCount+0
+0136 2401       219       add a, #1
+0138 D4         220       da a
+0139 F534       221       mov AlarmCount+0, a
+013B B460BD     222       cjne A, #60H, DisplayAlarmVal
+013E 753400     223       mov AlarmCount+0, #0
+0141 0200FB     224       ljmp DisplayAlarmVal
+0144 20FA13     225   M6:      jb KEY.2, M7
+0147 30FAFD     226       jnb KEY.2, $
+014A E535       227       mov a, AlarmCount+1
+014C 2401       228            add a, #1
+014E D4         229            da a
+014F F535       230            mov AlarmCount+1, a
+0151 B460A7     231       cjne A, #60H, DisplayAlarmVal
+0154 753500     232       mov AlarmCount+1, #0
+0157 0200FB     233       ljmp DisplayAlarmVal
+015A 20FB16     234   M7: jb KEY.3, M9
+015D 30FBFD     235            jnb KEY.3, $
+0160 E536       236            mov a, AlarmCount+2
+0162 2401       237            add a, #1
+0164 D4         238            da a
+0165 F536       239            mov AlarmCount+2, a
+0167 120179     240            lcall AlarmAMPM
+016A B4138E     241       cjne A, #13H, DisplayAlarmVal
+016D 753601     242       mov AlarmCount+2, #1H
+0170 0200FB     243       ljmp DisplayAlarmVal
+0173 20E9B8     244   M9:      jb SWA.1, SetAlarm
+0176 0201E1     245            ljmp M4
+0179            246            
+0179            247   AlarmAMPM:
+0179 E536       248            mov a, AlarmCount+2
+017B B41210     249            cjne a, #12H, returnAlarm
+017E B201       250            cpl meridiemAlarm
+0180 300103     251            jnb meridiemAlarm, ChangeToAMAlarm
+0183 200105     252            jb meridiemAlarm, ChangeToPMAlarm
+0186            253   ChangeToAMAlarm:
+0186 759108     254            mov HEX0, #08H
+0189 8019       255            sjmp return
+018B            256   ChangeToPMAlarm:
+018B 75910C     257            mov HEX0, #0CH
+018E            258   returnAlarm:
+018E 22         259            ret
+018F            260   
+018F            261   AMPM:
+018F E533       262            mov a, hours
+0191 B41210     263            cjne a, #12H, return
+0194 B200       264            cpl meridiem
+0196 300003     265            jnb meridiem, ChangeToAM
+0199 200005     266            jb meridiem, ChangeToPM
+019C            267   ChangeToAM:
+019C 759108     268            mov HEX0, #08H
+019F 8003       269            sjmp return
+01A1            270   ChangeToPM:
+01A1 75910C     271            mov HEX0, #0CH
+01A4            272   return:
+01A4 22         273            ret
+01A5            274   
+01A5            275   SetAlarm1:
+01A5 753400     276            mov AlarmCount+0, #00H
+01A8 753500     277            mov AlarmCount+1, #00H
+01AB 753612     278            mov AlarmCount+2, #12H
+01AE 02012E     279            ljmp SetAlarm
+01B1            280            
+01B1            281   myprogram:
+01B1 75817F     282            mov SP, #7FH
+01B4 75E800     283            mov LEDRA,#0
+01B7 759500     284            mov LEDRB,#0
+01BA 759E00     285            mov LEDRC,#0
+01BD 75F800     286            mov LEDG,#0
+01C0            287            
+01C0 753101     288            mov seconds, #01H
+01C3 753200     289            mov minutes, #00H
+01C6 753312     290            mov hours, #12H
+01C9            291            
+01C9 753400     292            mov AlarmCount+0, #00H
+01CC 753500     293            mov AlarmCount+1, #00H
+01CF 753612     294            mov AlarmCount+2, #12H
+01D2            295            
+01D2 C200       296            clr meridiem
+01D4 C201       297            clr meridiemAlarm
+01D6 759108     298            mov HEX0, #08H
+01D9            299   
+01D9 1200C2     300            lcall Init_Timer0
+01DC D2AF       301       setb EA  ; Enable all interrupts
+01DE            302   
+01DE            303   M0:
+01DE 20E9C4     304            jb SWA.1, SetAlarm1
+01E1 30E8FA     305   M4:      jnb SWA.0, M0
+01E4 20FB13     306            jb KEY.3, M1
+01E7 30FBFD     307       jnb KEY.3, $
+01EA E533       308       mov a, hours
+01EC 2401       309            add a, #1
+01EE D4         310            da a
+01EF F533       311            mov hours, a
+01F1 12018F     312            lcall AMPM
+01F4 B41303     313       cjne A, #13H, M1
+01F7 753301     314       mov hours, #1
+01FA            315   
+01FA            316   M1:      
+01FA 20FA10     317            jb KEY.2, M2
+01FD 30FAFD     318       jnb KEY.2, $
+0200 E532       319       mov a, minutes
+0202 2401       320            add a, #1
+0204 D4         321            da a
+0205 F532       322            mov minutes, a
+0207 B46003     323       cjne A, #60H, M2
+020A 753201     324       mov minutes, #1
+020D            325   
+020D            326   M2:      
+020D 20F910     327            jb KEY.1, M3
+0210 30F9FD     328            jnb KEY.1, $
+0213 E531       329            mov a, seconds
+0215 2401       330            add a, #1
+0217 D4         331            da a
+0218 F531       332            mov seconds, a
+021A B46003     333       cjne A, #60H, M3
+021D 753101     334       mov seconds, #1
+0220            335   
+0220            336   M3:      
+0220 0201DE     337            ljmp M0
+0223            338   END
