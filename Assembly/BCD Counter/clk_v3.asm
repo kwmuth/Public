@@ -52,8 +52,7 @@ ISR_Timer0:
     cjne A, #100, ISR_Timer0_L0
     mov count10ms, #0
     
-
-
+	lcall CheckAlarm
     
 	mov a, seconds
     add a, #1
@@ -150,6 +149,28 @@ Init_Timer0:
     setb ET0 ; Enable timer 0 interrupt
     ret
 
+CheckAlarm:
+	mov a, hours
+	mov b, AlarmCount+2
+	subb a,b
+	jz CheckMin
+ReturnISR:
+	ret
+CheckMin:
+	mov a, minutes
+	mov b, AlarmCount+1
+	subb a, b
+	jz CheckSec
+CheckSec:
+	mov a, seconds
+	mov b, AlarmCount+0
+	subb a,b 
+	jz SetLED
+SetLED:
+	setb LEDG.3
+	sjmp ReturnISR
+
+
 DisplayAlarmVal:
 	mov dptr, #myLUT	
 ; Display Digit 1
@@ -189,7 +210,6 @@ DisplayAlarmVal:
 
 SetAlarm:
 	jb KEY.1, M6
-	setb LEDG.2
 	jnb KEY.1, $
 	mov a, AlarmCount+0
     add a, #1
@@ -197,7 +217,6 @@ SetAlarm:
     mov AlarmCount+0, a
     cjne A, #60H, DisplayAlarmVal
     mov AlarmCount+0, #0
-    clr LEDG.2
     ljmp DisplayAlarmVal
 M6:	jb KEY.2, M7
     jnb KEY.2, $
@@ -262,7 +281,7 @@ myprogram:
 	mov LEDRC,#0
 	mov LEDG,#0
 	
-	mov seconds, #00H
+	mov seconds, #01H
 	mov minutes, #00H
 	mov hours, #12H
 	
