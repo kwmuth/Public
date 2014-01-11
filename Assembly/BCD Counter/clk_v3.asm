@@ -154,8 +154,7 @@ CheckAlarm:
 	mov b, AlarmCount+2
 	subb a,b
 	jz CheckMin
-ReturnISR:
-	ret
+	sjmp ReturnISR
 CheckMin:
 	mov a, minutes
 	mov b, AlarmCount+1
@@ -168,12 +167,19 @@ CheckSec:
 	mov b, AlarmCount+0
 	subb a,b 
 	clr c
-	jz SetLED
-	ljmp ReturnISR
+	jz CheckAMPM
+	sjmp ReturnISR
+CheckAMPM:
+	jb meridiem, K1
+	sjmp K2
+K1:	jb meridiemAlarm, SetLED
+	sjmp ReturnISR
+K2: jnb meridiemAlarm, SetLED
+	sjmp ReturnISR
 SetLED:
 	setb LEDG.3
-	sjmp ReturnISR
-
+ReturnISR:
+	ret
 
 DisplayAlarmVal:
 	mov dptr, #myLUT	
