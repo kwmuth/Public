@@ -174,6 +174,39 @@ DisplayAlarmVal:
 	mov HEX7, A
 	ljmp SetAlarm
 
+SetAlarm:
+	jb KEY.1, M6
+	setb LEDG.2
+	jnb KEY.1, $
+	mov a, AlarmCount+0
+    add a, #1
+    da a
+    mov AlarmCount+0, a
+    cjne A, #60H, DisplayAlarmVal
+    mov AlarmCount+0, #0
+    clr LEDG.2
+    ljmp DisplayAlarmVal
+M6:	jb KEY.2, M7
+    jnb KEY.2, $
+    mov a, AlarmCount+1
+	add a, #1
+	da a
+	mov AlarmCount+1, a
+    cjne A, #60H, DisplayAlarmVal
+    mov AlarmCount+1, #0
+    ljmp DisplayAlarmVal
+M7: jb KEY.3, M9
+	jnb KEY.3, $
+	mov a, AlarmCount+2
+	add a, #1
+	da a
+	mov AlarmCount+2, a
+    cjne A, #13H, DisplayAlarmVal
+    mov AlarmCount+2, #1H
+    ljmp DisplayAlarmVal
+M9:	jb SWA.1, SetAlarm
+	ljmp M4
+
 AMPM:
 	mov a, hours
 	cjne a, #12H, return
@@ -188,20 +221,8 @@ ChangeToPM:
 return:
 	ret
 
-SetAlarm:
-	jb KEY.1, M6
-	setb LEDG.2
-	jnb KEY.1, $
-	mov a, AlarmCount+0
-    add a, #1
-    da a
-    mov AlarmCount+0, a
-    cjne A, #60H, DisplayAlarmVal
-    mov AlarmCount+0, #0
-    ljmp DisplayAlarmVal
-	clr LEDG.2
-M6:	jb SWA.1, SetAlarm
-	ljmp M4
+SetAlarm1:
+	ljmp SetAlarm
 	
 myprogram:
 	mov SP, #7FH
@@ -225,7 +246,7 @@ myprogram:
     setb EA  ; Enable all interrupts
 
 M0:
-	jb SWA.1, SetAlarm
+	jb SWA.1, SetAlarm1
 M4:	jnb SWA.0, M0
 	jb KEY.3, M1
     jnb KEY.3, $
