@@ -15,6 +15,7 @@ count10ms: ds 1
 seconds:   ds 1
 minutes:   ds 1
 hours:     ds 1
+AlarmCount:	ds 3
 
 BSEG
 meridiem:	dbit 1
@@ -81,7 +82,7 @@ M8: cjne A, #13H, ISR_Timer0_L0
     
     
 ISR_Timer0_L0:
-
+	jb SWA.1, do_nothing
 	; Update the display.  This happens every 10 ms
 	mov dptr, #myLUT
 
@@ -119,6 +120,7 @@ ISR_Timer0_L1:
 	mov HEX7, a
 
 	; Restore used registers
+do_nothing:
 	pop dpl
 	pop dph
 	pop acc
@@ -135,6 +137,43 @@ Init_Timer0:
     setb ET0 ; Enable timer 0 interrupt
     ret
 
+DisplayAlarmVal:
+	mov dptr, #myLUT	
+; Display Digit 1
+	mov A, AlarmCount+0
+    anl A, #0FH
+    movc A, @A+dptr
+    mov HEX2, A   
+; Display Digit 2
+    mov A, AlarmCount+0
+    swap A
+    anl A, #0FH
+    movc A, @A+dptr
+    mov HEX3, A	 
+; Display digit 3
+	mov A, AlarmCount+1
+	anl A, #0FH
+	movc A, @A+dptr
+	mov HEX4, A	
+;Display digit 4
+	mov A, AlarmCount+1
+	swap A
+	anl A, #0FH
+	movc A, @A+dptr
+	mov HEX5, A	
+;Display digit 5
+	mov A, AlarmCount+2
+	anl A, #0FH
+	movc A, @A+dptr
+	mov HEX6, A
+;Display digit 6
+	mov A, AlarmCount+2
+	swap A
+	anl A, #0FH
+	movc A, @A+dptr
+	mov HEX7, A
+	ljmp SetAlarm
+
 AMPM:
 	mov a, hours
 	cjne a, #12H, return
@@ -149,6 +188,20 @@ ChangeToPM:
 return:
 	ret
 
+SetAlarm:
+;	jb KEY.1, SetAlarm
+	setb LEDG.2
+;;	jnb KEY.1, $
+;	mov a, AlarmCount+0
+ ;   add a, #1
+ ;   da a
+ ;   mov AlarmCount+0, a
+ ;   cjne A, #60H, DisplayAlarmVal
+ ;   mov AlarmCount+0, #0
+	jb SWA.1, SetAlarm
+	clr LEDG.2
+	ljmp M4
+	
 myprogram:
 	mov SP, #7FH
 	mov LEDRA,#0
@@ -166,9 +219,9 @@ myprogram:
 	lcall Init_Timer0
     setb EA  ; Enable all interrupts
 
-	
 M0:
-	jnb SWA.0, M0
+	jb SWA.1, SetAlarm
+M4:	jnb SWA.0, M0
 	jb KEY.3, M1
     jnb KEY.3, $
     mov a, hours
