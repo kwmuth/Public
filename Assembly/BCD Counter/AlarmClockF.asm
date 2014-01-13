@@ -162,9 +162,9 @@ CheckAlarm:
 M20:lcall WriteWakeUp
 M21:jb meridiem, M22
 	jnb meridiemAlarm, CheckHour
-	sjmp ReturnISR							;check if AM/PM matches
+	ljmp ReturnISR							;check if AM/PM matches
 M22:jb meridiemAlarm, CheckHour
-	sjmp ReturnISR
+	ljmp ReturnISR
 CheckHour:
 	mov a, hours							;check if hours match
 	mov b, AlarmCount+2
