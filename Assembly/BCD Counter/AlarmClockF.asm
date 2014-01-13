@@ -160,11 +160,10 @@ CheckAlarm:
 	lcall WriteAlarm						;otherwise write "alarm"
 	sjmp M21
 M20:lcall WriteWakeUp
-M21:mov a, meridiem							;check if AM/PM matches
-	mov b, meridiemAlarm
-	clr c
- 	subb a,b
-	jz CheckHour
+M21:jb meridiem, M22
+	jnb meridiemAlarm, CheckHour
+	sjmp ReturnISR							;check if AM/PM matches
+M22:jb meridiem, CheckHour
 	sjmp ReturnISR
 CheckHour:
 	mov a, hours							;check if hours match
