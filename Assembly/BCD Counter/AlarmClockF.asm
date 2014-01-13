@@ -5,6 +5,8 @@ FREQ_0 EQU 2000
 FREQ_2 EQU 100
 TIMER0_RELOAD EQU 65536-(CLK/(12*2*FREQ_0))
 TIMER2_RELOAD EQU 65536-(CLK/(12*FREQ_2))
+TIMER1_RELOAD EQU 65536-(CLK/(12*2*FREQ_0))
+
 
 org 0000H
 	ljmp Startup
@@ -35,10 +37,25 @@ myLUT:										;Look-up table for 7-segment displays
     DB 0FFH 								;All segments off
 
 ISR_Timer0:
-	cpl P0.0 								;Compliments the bit of P0.0
-	mov TH0, #high(TIMER0_RELOAD)
-	mov TL0, #low(TIMER0_RELOAD)
+
+	mov a, count10ms
+	subb a, #50
+	jc ISR_timer1_L0 ; alternates beeping half the time
+	clr P0.0
+	mov LEDRA, #0
 	reti
+
+ISR_timer1_L0:	
+	cpl P0.0
+	mov TH1, #high(TIMER1_RELOAD)
+	mov TL1, #low(TIMER1_RELOAD)
+	mov LEDRA, #1
+	reti
+	
+;	cpl P0.0 								;Compliments the bit of P0.0
+;	mov TH0, #high(TIMER0_RELOAD)
+;	mov TL0, #low(TIMER0_RELOAD)
+;	reti
 
 ISR_Timer2:
 	push psw
@@ -455,6 +472,14 @@ Startup:
 	mov TL0, #low(TIMER0_RELOAD)  			;Timer high 8-bits
 	setb TR0              					;Enable timer 0
 	clr ET0              					;Disable timer 0 interrupt
+	
+	mov TMOD,  #00010000B 					;GATE=0, C/T*=0, M1=0, M0=1: 16-bit timer
+	clr TR1               					;Disable timer 0
+	clr TF1               					;Clear timer 0 flag
+	mov TH1, #high(TIMER1_RELOAD) 			;Timer low 8-bits
+	mov TL1, #low(TIMER1_RELOAD)  			;Timer high 8-bits
+	setb TR1              					;Enable timer 0
+	clr ET1
 	
 	mov T2CON, #00H 						;Autoreload is enabled, work as a timer
     clr TR2
