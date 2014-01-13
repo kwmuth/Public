@@ -493,6 +493,6 @@ Startup:
 	mov AlarmCount+2, #12H
 
 Forever:
-	lcall CheckInputs
+	lcall SetTime
 	sjmp Forever
 END
