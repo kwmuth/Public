@@ -162,24 +162,28 @@ CheckAlarm:
 M20:lcall WriteWakeUp
 M21:mov a, meridiem							;check if AM/PM matches
 	mov b, meridiemAlarm
+	clr c
  	subb a,b
 	jz CheckHour
 	sjmp ReturnISR
 CheckHour:
 	mov a, hours							;check if hours match
 	mov b, AlarmCount+2
+	clr c
  	subb a,b
 	jz CheckMin
 	sjmp ReturnISR
 CheckMin:									;check if minutes match
 	mov a, minutes
 	mov b, AlarmCount+1
+	clr c
 	subb a, b
 	jz CheckSec
 	sjmp ReturnISR
 CheckSec:									;check if seconds match
 	mov a, seconds
 	mov b, AlarmCount+0
+	clr c
 	subb a,b 
 	jz SoundAlarm
 	sjmp ReturnISR
