@@ -12,7 +12,10 @@ org 0000H
 	ljmp Startup
         
 org 000BH
-	ljmp ISR_timer0	  						;Timer1 ISR
+	ljmp ISR_timer0	 
+	
+org 001BH			 						;Timer1 ISR
+	ljmp ISR_timer1
 	
 org 002BH
 	ljmp ISR_timer2   						;Timer2 ISR
@@ -22,12 +25,12 @@ count10ms:	ds 1
 seconds:	ds 1
 minutes:	ds 1
 hours:		ds 1
-AlarmCount:	ds 3
+AlarmCount:	ds 3 							;reserves 3 bytes
 
 BSEG
-meridiem:	dbit 1
-meridiemAlarm: dbit 1
-alarmSet: 	dbit 1
+meridiem:		dbit 1
+meridiemAlarm: 	dbit 1
+alarmSet: 		dbit 1
 
 CSEG
 
@@ -37,19 +40,24 @@ myLUT:										;Look-up table for 7-segment displays
     DB 0FFH 								;All segments off
 
 ISR_Timer0:
-
-	mov a, count10ms
+    mov TH0, #high(TIMER0_RELOAD)
+    mov TL0, #low(TIMER0_RELOAD)
+ 	mov a, count10ms
 	subb a, #50
-	jc ISR_timer1_L0 ; alternates beeping half the time
+	jc ISR_timer1							 ; alternates beeping half the time
 	clr P0.0
 	mov LEDRA, #0
+	mov LEDRB, #0
+	mov LEDRC, #0
 	reti
 
-ISR_timer1_L0:	
+ISR_timer1:	
 	cpl P0.0
 	mov TH1, #high(TIMER1_RELOAD)
 	mov TL1, #low(TIMER1_RELOAD)
-	mov LEDRA, #1
+	mov LEDRA, #11111111B
+	mov LEDRB, #11111111B
+	mov LEDRC, #11B
 	reti
 	
 ;	cpl P0.0 								;Compliments the bit of P0.0
@@ -126,7 +134,7 @@ ISR_Timer2_L0:
 	jb meridiem, InitMeridiemPM
 InitMeridiemAM:
 	mov HEX0, #08H
- 	ljmp M15
+	ljmp M15
 InitMeridiemPM:
 	mov HEX0, #0CH
 
@@ -301,7 +309,7 @@ ChangeMeridiem:
 	mov a, hours
  	cjne a, #12H, ReturnMeridiem			;if not 12:00:00, AM/PM does not need to be changed
 	cpl meridiem							;if equal to 12, complement bit
-CM:	jnb meridiem, ChangeToAM				;if bit = 0, change to AM
+	jnb meridiem, ChangeToAM				;if bit = 0, change to AM
 	jb meridiem, ChangeToPM					;if bit = 1, change to PM
 ChangeToAM:
 	mov HEX0, #08H
@@ -407,7 +415,7 @@ ClearScreen:
 	lcall LCD_command
 	ret
 
-;
+
 Clr_loop:
 	lcall Wait40us
 	djnz R1, Clr_loop

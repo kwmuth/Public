@@ -154,516 +154,524 @@
 0000              9   
 0000             10   
 0000             11   org 0000H
-0000 0202E8      12            ljmp Startup
+0000 0202FA      12            ljmp Startup
 0003             13           
 000B             14   org 000BH
-000B 020039      15            ljmp ISR_timer0                                                         ;Timer1 ISR
+000B 020039      15            ljmp ISR_timer0          
 000E             16            
-002B             17   org 002BH
-002B 020051      18            ljmp ISR_timer2                                                 ;Timer2 ISR
-002E             19           
-0030             20   DSEG at 30H
-0030             21   count10ms:       ds 1
-0031             22   seconds:         ds 1
-0032             23   minutes:         ds 1
-0033             24   hours:           ds 1
-0034             25   AlarmCount:      ds 3
-0037             26   
-0000             27   BSEG
-0000             28   meridiem:        dbit 1
-0001             29   meridiemAlarm: dbit 1
-0002             30   alarmSet:        dbit 1
-0003             31   
-002E             32   CSEG
-002E             33   
-002E             34   myLUT:                                                                           ;Look-up table for 7-segment displays
-002E C0F9A4B0    35       DB 0C0H, 0F9H, 0A4H, 0B0H, 099H
+001B             17   org 001BH                                                                        ;Timer1 ISR
+001B 020051      18            ljmp ISR_timer1
+001E             19            
+002B             20   org 002BH
+002B 020063      21            ljmp ISR_timer2                                                 ;Timer2 ISR
+002E             22           
+0030             23   DSEG at 30H
+0030             24   count10ms:       ds 1
+0031             25   seconds:         ds 1
+0032             26   minutes:         ds 1
+0033             27   hours:           ds 1
+0034             28   AlarmCount:      ds 3                                                    ;reserves 3 bytes
+0037             29   
+0000             30   BSEG
+0000             31   meridiem:                dbit 1
+0001             32   meridiemAlarm:   dbit 1
+0002             33   alarmSet:                dbit 1
+0003             34   
+002E             35   CSEG
+002E             36   
+002E             37   myLUT:                                                                           ;Look-up table for 7-segment displays
+002E C0F9A4B0    38       DB 0C0H, 0F9H, 0A4H, 0B0H, 099H
      99
-0033 9282F880    36       DB 092H, 082H, 0F8H, 080H, 090H
+0033 9282F880    39       DB 092H, 082H, 0F8H, 080H, 090H
      90
-0038 FF          37       DB 0FFH                                                              ;All segments off
-0039             38   
-0039             39   ISR_Timer0:
-0039             40   
-0039 E530        41            mov a, count10ms
-003B 9432        42            subb a, #50
-003D 4006        43            jc ISR_timer1_L0 ; alternates beeping half the time
-003F C280        44            clr P0.0
-0041 75E800      45            mov LEDRA, #0
-0044 32          46            reti
-0045             47   
-0045             48   ISR_timer1_L0:   
-0045 B280        49            cpl P0.0
-0047 758DFD      50            mov TH1, #high(TIMER1_RELOAD)
-004A 758B4A      51            mov TL1, #low(TIMER1_RELOAD)
-004D 75E801      52            mov LEDRA, #1
-0050 32          53            reti
-0051             54            
-0051             55   ;        cpl P0.0                                                                ;Compliments the bit of P0.0
-0051             56   ;        mov TH0, #high(TIMER0_RELOAD)
-0051             57   ;        mov TL0, #low(TIMER0_RELOAD)
-0051             58   ;        reti
-0051             59   
-0051             60   ISR_Timer2:
-0051 C0D0        61            push psw
-0053 C0E0        62       push acc
-0055 C083        63       push dph
-0057 C082        64       push dpl
-0059             65       
-0059 C2CF        66       clr TF2
-005B B281        67            cpl P0.1
-005D             68       
-005D 20EA03      69       jb SWA.2, Alarm                                                      ;if SWA.2 is flipped, alarm is set, check if alarm should go off
-0060 30EA05      70       jnb SWA.2, NoAlarm                                           ;if SWA.2 is off, no alarm is set 
-0063             71   Alarm:
-0063 120107      72       lcall CheckAlarm
-0066 8007        73       sjmp Continue
-0068             74   NoAlarm:         
-0068 120284      75            lcall WriteClock                                                ;Display clock on LCD screen
-006B C2FB        76            clr LEDG.3                      
-006D C2A9        77            clr ET0                                                                         ;Clear Timer 0 ISR
-006F             78   Continue:
-006F 20E845      79       jb SWA.0, ISR_Timer2_L0                              ;Setting up time, does not increment anything
-0072             80       
-0072             81       ;Increment the counter and check if a second has passed
-0072 0530        82       inc count10ms
-0074 E530        83       mov a, count10ms
-0076 B4643E      84       cjne A, #100, ISR_Timer2_L0
-0079 753000      85       mov count10ms, #0
-007C             86       
-007C             87       ;increment seconds
-007C E531        88       mov a, seconds
-007E 2401        89       add a, #1
-0080 D4          90       da a
-0081 F531        91       mov seconds, a
-0083 B46031      92       cjne A, #60H, ISR_Timer2_L0
-0086 753100      93       mov seconds, #0
-0089             94   
-0089             95            ;increment minutes
-0089 E532        96       mov a, minutes
-008B 2401        97       add a, #1
-008D D4          98       da a
-008E F532        99       mov minutes, a
-0090 B46024     100       cjne A, #60H, ISR_Timer2_L0
-0093 753200     101       mov minutes, #0
-0096            102   
-0096            103            ;increment hours
-0096 E533       104       mov a, hours
-0098 2401       105       add a, #1
-009A D4         106       da a
-009B F533       107       mov hours, a
-009D            108       
-009D B41211     109       cjne A, #12H, SkipMeridiem
-00A0            110   CPLMeridiem:                                                             ;if the clock is at 12 hours, change AM/PM
-00A0 B200       111            cpl meridiem
-00A2 300003     112            jnb meridiem, AM
-00A5 200006     113            jb meridiem, PM
-00A8 759108     114   AM:      mov HEX0, #08H
-00AB 0200B7     115            ljmp ISR_Timer2_L0
-00AE 75910C     116   PM: mov HEX0, #0CH
-00B1            117   SkipMeridiem:                                                            ;if clock is at 13 hours, move 1 to hours
-00B1 B41303     118            cjne A, #13H, ISR_Timer2_L0
-00B4 753301     119       mov hours, #1
-00B7            120       
-00B7            121   ISR_Timer2_L0:
-00B7 20E944     122            jb SWA.1, Do_Nothing                                    ;if SWA.1 is up, increment clock, do not display
-00BA 90002E     123            mov dptr, #myLUT
-00BD            124   
-00BD 300003     125            jnb meridiem, InitMeridiemAM                    ;Display AM/PM
-00C0 200006     126            jb meridiem, InitMeridiemPM
-00C3            127   InitMeridiemAM:
-00C3 759108     128            mov HEX0, #08H
-00C6 0200CC     129            ljmp M15
-00C9            130   InitMeridiemPM:
-00C9 75910C     131            mov HEX0, #0CH
-00CC            132   
-00CC            133   M15:
-00CC E531       134            mov a, seconds                                                  ;Display seconds
-00CE 540F       135            anl a, #0fH
-00D0 93         136            movc a, @a+dptr
-00D1 F593       137            mov HEX2, a
-00D3 E531       138            mov a, seconds
-00D5 C4         139            swap a
-00D6 540F       140            anl a, #0fH
-00D8 93         141            movc a, @a+dptr
-00D9 F594       142            mov HEX3, a
-00DB            143   
-00DB E532       144            mov a, minutes                                                  ;Display minutes
-00DD 540F       145            anl a, #0fH     
-00DF 93         146            movc a, @a+dptr
-00E0 F58E       147            mov HEX4, a
-00E2 E532       148            mov a, minutes
-00E4 C4         149            swap a
-00E5 540F       150            anl a, #0fH
-00E7 93         151            movc a, @a+dptr
-00E8 F58F       152            mov HEX5, a
-00EA            153   
-00EA E533       154            mov a, hours                                                    ;Display hours
-00EC 540F       155            anl a, #0fH
-00EE 93         156            movc a, @a+dptr
-00EF F596       157            mov HEX6, a
-00F1 E533       158            mov a, hours
-00F3 20E402     159            jb acc.4, ISR_Timer2_L1                                         ;If hour between 1-9, nothing displayed on HEX7
-00F6 74A0       160            mov a, #0A0H
-00F8            161   ISR_Timer2_L1:
-00F8 C4         162            swap a
-00F9 540F       163            anl a, #0fH
-00FB 93         164            movc a, @a+dptr
-00FC F597       165            mov HEX7, a
-00FE            166   
-00FE            167   Do_Nothing:
-00FE D082       168            pop dpl
-0100 D083       169            pop dph
-0102 D0E0       170            pop acc
-0104 D0D0       171            pop psw    
-0106 32         172            reti
-0107            173   
-0107            174   ;Checks if clock time matches alarm time and sounds buzzer
-0107            175   CheckAlarm:                                                              
-0107 20A905     176            jb ET0, M20                                                             ;if interrupt 0 is enabled, write "wake up" to LCD
-010A 120267     177            lcall WriteAlarm                                                ;otherwise write "alarm"
-010D 8003       178            sjmp M21
-010F 120240     179   M20:lcall WriteWakeUp
-0112 200006     180   M21:jb meridiem, M22
-0115 300109     181            jnb meridiemAlarm, CheckHour
-0118 020149     182            ljmp ReturnISR                                                  ;check if AM/PM matches
-011B 200103     183   M22:jb meridiemAlarm, CheckHour
-011E 020149     184            ljmp ReturnISR
-0121            185   CheckHour:
-0121 E533       186            mov a, hours                                                    ;check if hours match
-0123 8536F0     187            mov b, AlarmCount+2
-0126 C3         188            clr c
-0127 95F0       189            subb a,b
-0129 6002       190            jz CheckMin
-012B 801C       191            sjmp ReturnISR
-012D            192   CheckMin:                                                                        ;check if minutes match
-012D E532       193            mov a, minutes
-012F 8535F0     194            mov b, AlarmCount+1
-0132 C3         195            clr c
-0133 95F0       196            subb a, b
-0135 6002       197            jz CheckSec
-0137 8010       198            sjmp ReturnISR
-0139            199   CheckSec:                                                                        ;check if seconds match
-0139 E531       200            mov a, seconds
-013B 8534F0     201            mov b, AlarmCount+0
-013E C3         202            clr c
-013F 95F0       203            subb a,b 
-0141 6002       204            jz SoundAlarm
-0143 8004       205            sjmp ReturnISR
-0145            206   SoundAlarm:                                                                      ;if time matches, enable timer 0 interrupt, return to timer 2 ISR
-0145 D2FB       207            setb LEDG.3
-0147 D2A9       208            setb ET0
-0149            209   ReturnISR:
-0149 22         210            ret
-014A            211   
-014A            212   ;Displays time we are setting alarm to on HEX display
-014A            213   DisplayAlarmVal:         
-014A 90002E     214            mov dptr, #myLUT        
-014D            215   ; Display Digit 1
-014D E534       216            mov A, AlarmCount+0
-014F 540F       217       anl A, #0FH
-0151 93         218       movc A, @A+dptr
-0152 F593       219       mov HEX2, A   
-0154            220   ; Display Digit 2
-0154 E534       221       mov A, AlarmCount+0
-0156 C4         222       swap A
-0157 540F       223       anl A, #0FH
-0159 93         224       movc A, @A+dptr
-015A F594       225       mov HEX3, A         
-015C            226   ; Display digit 3
-015C E535       227            mov A, AlarmCount+1
-015E 540F       228            anl A, #0FH
-0160 93         229            movc A, @A+dptr
-0161 F58E       230            mov HEX4, A        
-0163            231   ;Display digit 4
-0163 E535       232            mov A, AlarmCount+1
-0165 C4         233            swap A
-0166 540F       234            anl A, #0FH
-0168 93         235            movc A, @A+dptr
-0169 F58F       236            mov HEX5, A        
-016B            237   ;Display digit 5
-016B E536       238            mov A, AlarmCount+2
-016D 540F       239            anl A, #0FH
-016F 93         240            movc A, @A+dptr
-0170 F596       241            mov HEX6, A
-0172            242   ;Display digit 6
-0172 E536       243            mov A, AlarmCount+2
-0174 20E402     244            jb acc.4, I0
-0177 74A0       245            mov a, #0A0H
-0179 C4         246   I0:      swap A
-017A 540F       247            anl A, #0FH
-017C 93         248            movc A, @A+dptr
-017D F597       249            mov HEX7, A
-017F 22         250            ret
-0180            251            
-0180            252   SetAlarm:
-0180 12014A     253            lcall DisplayAlarmVal                                   ;initially displays 12:00:00 AM on screen
-0183 20F913     254            jb KEY.1, M6                                                    ;if KEY.1 is not pressed, check KEY.2
-0186 30F9FD     255            jnb KEY.1, $                                                    ;wait for key to be released
-0189 E534       256            mov a, AlarmCount+0                                             ;increment seconds, and display
-018B 2401       257       add a, #1
-018D D4         258       da a
-018E F534       259       mov AlarmCount+0, a
-0190 B460B7     260       cjne A, #60H, DisplayAlarmVal
-0193 753400     261       mov AlarmCount+0, #0
-0196 02014A     262       ljmp DisplayAlarmVal
-0199 20FA13     263   M6:      jb KEY.2, M7                                                    ;if KEY.2 is not pressed, check KEY.3
-019C 30FAFD     264       jnb KEY.2, $                                                         ;wait for key to be released
-019F E535       265       mov a, AlarmCount+1                                          ;increment minutes and display
-01A1 2401       266            add a, #1
-01A3 D4         267            da a
-01A4 F535       268            mov AlarmCount+1, a
-01A6 B460A1     269       cjne A, #60H, DisplayAlarmVal
-01A9 753500     270       mov AlarmCount+1, #0
-01AC 02014A     271       ljmp DisplayAlarmVal
-01AF 20FB16     272   M7: jb KEY.3, M9                                                         ;if KEY.3 is not pressed, check if SWA.1 is flipped
-01B2 30FBFD     273            jnb KEY.3, $                                                    ;wait for key to be released
-01B5 E536       274            mov a, AlarmCount+2                                             ;increment hours and display
-01B7 2401       275            add a, #1
-01B9 D4         276            da a
-01BA F536       277            mov AlarmCount+2, a
-01BC 1201CE     278            lcall AlarmAMPM                                                         ;change AM/PM values every 12 hours
-01BF B41388     279       cjne A, #13H, DisplayAlarmVal
-01C2 753601     280       mov AlarmCount+2, #1H
-01C5 02014A     281       ljmp DisplayAlarmVal
-01C8 20E9B5     282   M9:      jb SWA.1, SetAlarm                                              ;if SWA.1 is still flipped, jump back to beginning of function                  
-01CB 02023F     283            ljmp M4                                                                         ;if SWA.1 is not flipped, back to forever loop
-01CE            284   
-01CE            285   ;checks value stored in AlarmCount+2 and changes AM/PM accordingly
-01CE            286   AlarmAMPM:                                                                       
-01CE E536       287            mov a, AlarmCount+2
-01D0 B41210     288            cjne a, #12H, returnAlarm                               ;if not 12:00:00, AM/PM does not need to be changed
-01D3 B201       289            cpl meridiemAlarm                                               ;if equal to 12, complement bit
-01D5 300103     290            jnb meridiemAlarm, ChangeToAMAlarm              ;if bit = 0, change to AM
-01D8 200105     291            jb meridiemAlarm, ChangeToPMAlarm               ;if bit = 1, change to PM
-01DB            292   ChangeToAMAlarm:
-01DB 759108     293            mov HEX0, #08H
-01DE 8003       294            sjmp returnAlarm
-01E0            295   ChangeToPMAlarm:
-01E0 75910C     296            mov HEX0, #0CH
-01E3            297   returnAlarm:                                                             ;return to set alarm function
-01E3 22         298            ret
-01E4            299           
-01E4            300   ChangeMeridiem:
-01E4 E533       301            mov a, hours
-01E6 B41210     302            cjne a, #12H, ReturnMeridiem                    ;if not 12:00:00, AM/PM does not need to be changed
-01E9 B200       303            cpl meridiem                                                    ;if equal to 12, complement bit
-01EB 300003     304   CM:      jnb meridiem, ChangeToAM                                ;if bit = 0, change to AM
-01EE 200005     305            jb meridiem, ChangeToPM                                         ;if bit = 1, change to PM
-01F1            306   ChangeToAM:
-01F1 759108     307            mov HEX0, #08H
-01F4 8003       308            sjmp ReturnMeridiem
-01F6            309   ChangeToPM:
-01F6 75910C     310            mov HEX0, #0CH
-01F9            311   ReturnMeridiem:                                                          ;return to set time function
-01F9 22         312            ret
-01FA            313   
-01FA            314   ;checks if SWA.0 or SWA.1 is flipped
-01FA            315   ;sets time 
-01FA            316   SetTime:
-01FA 20E983     317            jb SWA.1, SetAlarm                                              ;if SWA.1 is up, set alarm
-01FD 30E83F     318            jnb SWA.0, M4                                                   ;if SWA.0 is down, cannot set time, clock continues to increment
-0200 20FB13     319            jb KEY.3, M1
-0203 30FBFD     320       jnb KEY.3, $                                                         ;if KEY.3 is pressed, increment hours
-0206 E533       321       mov a, hours
-0208 2401       322            add a, #1
-020A D4         323            da a
-020B F533       324            mov hours, a
-020D 1201E4     325            lcall ChangeMeridiem                                    ;change AM/PM accordingly
-0210 B41303     326       cjne A, #13H, M1
-0213 753301     327       mov hours, #1
-0216            328   M1:        
-0216 20FA10     329            jb KEY.2, M2
-0219 30FAFD     330       jnb KEY.2, $                                                         ;if KEY.2 is pressed, increment minutes
-021C E532       331       mov a, minutes
-021E 2401       332            add a, #1
-0220 D4         333            da a
-0221 F532       334            mov minutes, a
-0223 B46003     335            cjne A, #60H, M2
-0226 753200     336            mov minutes, #0
-0229            337   M2:        
-0229 20F910     338            jb KEY.1, M3
-022C 30F9FD     339            jnb KEY.1, $                                                    ;if KEY.1 is pressed, increment seconds
-022F E531       340            mov a, seconds
-0231 2401       341            add a, #1
-0233 D4         342            da a
-0234 F531       343            mov seconds, a
-0236 B46003     344            cjne A, #60H, M3
-0239 753100     345            mov seconds, #0
-023C            346   M3:        
-023C 0201FA     347            ljmp SetTime                                                    ;loop through function until SWA.0 is not flipped
-023F            348   M4:      
-023F 22         349            ret
-0240            350   
-0240            351   ;Writes WAKE UP to LCD screen when buzzer is sounded
-0240            352   WriteWakeUp:
-0240 1202A1     353            lcall ClearScreen
-0243 7457       354            mov a, #'W'     
-0245 1202D5     355            lcall LCD_put
-0248 7441       356            mov a, #'A'     
-024A 1202D5     357            lcall LCD_put
-024D 744B       358            mov a, #'K'     
-024F 1202D5     359            lcall LCD_put
-0252 7445       360            mov a, #'E'     
-0254 1202D5     361            lcall LCD_put
-0257 7420       362            mov a, #' '     
-0259 1202D5     363            lcall LCD_put
-025C 7455       364            mov a, #'U'     
-025E 1202D5     365            lcall LCD_put
-0261 7450       366            mov a, #'P'     
-0263 1202D5     367            lcall LCD_put
-0266 22         368            ret
-0267            369   
-0267            370   ;Writes ALARM to LCD screen when alarm is set
-0267            371   WriteAlarm:
-0267 1202A1     372            lcall ClearScreen
-026A 7441       373            mov a, #'A'     
-026C 1202D5     374            lcall LCD_put
-026F 744C       375            mov a, #'L'     
-0271 1202D5     376            lcall LCD_put
-0274 7441       377            mov a, #'A'     
-0276 1202D5     378            lcall LCD_put
-0279 7452       379            mov a, #'R'     
-027B 1202D5     380            lcall LCD_put
-027E 744D       381            mov a, #'M'     
-0280 1202D5     382            lcall LCD_put
-0283 22         383            ret
-0284            384   
-0284            385   ;Writes clock to LCD screen when clock is incrementing
-0284            386   WriteClock:
-0284 1202A1     387            lcall ClearScreen
-0287 7443       388            mov a, #'C'     
-0289 1202D5     389            lcall LCD_put
-028C 744C       390            mov a, #'L'     
-028E 1202D5     391            lcall LCD_put
-0291 744F       392            mov a, #'O'     
-0293 1202D5     393            lcall LCD_put
-0296 7443       394            mov a, #'C'     
-0298 1202D5     395            lcall LCD_put
-029B 744B       396            mov a, #'K'     
-029D 1202D5     397            lcall LCD_put
-02A0 22         398            ret
-02A1            399   
-02A1            400   ;Clears screen
-02A1            401   ClearScreen:
-02A1 7401       402            mov a, #01H 
-02A3 1202C2     403            lcall LCD_command       
-02A6 7928       404            mov R1, #40
-02A8 1202B1     405            lcall Clr_loop
-02AB 7480       406            mov a, #80H
-02AD 1202C2     407            lcall LCD_command
-02B0 22         408            ret
-02B1            409   
-02B1            410   ;
-02B1            411   Clr_loop:
-02B1 1202B7     412            lcall Wait40us
-02B4 D9FB       413            djnz R1, Clr_loop
-02B6 22         414            ret      
-02B7            415            
-02B7            416   Wait40us:
-02B7 7895       417            mov R0, #149
-02B9            418   X1: 
-02B9 00         419            nop
-02BA 00         420            nop
-02BB 00         421            nop
-02BC 00         422            nop
-02BD 00         423            nop
-02BE 00         424            nop
-02BF D8F8       425            djnz R0, X1                                                     ;9 machine cycles-> 9*30ns*149=40us
-02C1 22         426       ret
-02C2            427   
-02C2            428   LCD_command:
-02C2 F5D9       429            mov     LCD_DATA, A
-02C4 C2DA       430            clr     LCD_RS
-02C6 00         431            nop
-02C7 00         432            nop
-02C8 D2D9       433            setb LCD_EN                                                     ;Enable pulse should be at least 230 ns
-02CA 00         434            nop
-02CB 00         435            nop
-02CC 00         436            nop
-02CD 00         437            nop
-02CE 00         438            nop
-02CF 00         439            nop
-02D0 C2D9       440            clr     LCD_EN
-02D2 0202B7     441            ljmp Wait40us
-02D5            442   
-02D5            443   LCD_put:
-02D5 F5D9       444            mov     LCD_DATA, A
-02D7 D2DA       445            setb LCD_RS
-02D9 00         446            nop
-02DA 00         447            nop
-02DB D2D9       448            setb LCD_EN                                                     ;Enable pulse should be at least 230 ns
-02DD 00         449            nop
-02DE 00         450            nop
-02DF 00         451            nop
-02E0 00         452            nop
-02E1 00         453            nop
-02E2 00         454            nop
-02E3 C2D9       455            clr     LCD_EN
-02E5 0202B7     456            ljmp Wait40us   
-02E8            457            
-02E8            458   Startup:
-02E8 75817F     459            mov SP, #7FH
-02EB 75E800     460            mov LEDRA,#0
-02EE 759500     461            mov LEDRB,#0
-02F1 759E00     462            mov LEDRC,#0
-02F4 75F800     463            mov LEDG,#0
-02F7            464            
-02F7 759A03     465            mov P0MOD, #00000011B                                   ;P0.0, P0.1 are outputs.  P0.1 is used for testing Timer 2!
-02FA D280       466            setb P0.0                                               ;Sets P0.0 to 1
-02FC            467   
-02FC 758901     468            mov TMOD,  #00000001B                                   ;GATE=0, C/T*=0, M1=0, M0=1: 16-bit timer
-02FF C28C       469            clr TR0                                                 ;Disable timer 0
-0301 C28D       470            clr TF0                                                 ;Clear timer 0 flag
-0303 758CFD     471            mov TH0, #high(TIMER0_RELOAD)                   ;Timer low 8-bits
-0306 758A4A     472            mov TL0, #low(TIMER0_RELOAD)                    ;Timer high 8-bits
-0309 D28C       473            setb TR0                                                ;Enable timer 0
-030B C2A9       474            clr ET0                                                 ;Disable timer 0 interrupt
-030D            475            
-030D 758910     476            mov TMOD,  #00010000B                                   ;GATE=0, C/T*=0, M1=0, M0=1: 16-bit timer
-0310 C28E       477            clr TR1                                                 ;Disable timer 0
-0312 C28F       478            clr TF1                                                 ;Clear timer 0 flag
-0314 758DFD     479            mov TH1, #high(TIMER1_RELOAD)                   ;Timer low 8-bits
-0317 758B4A     480            mov TL1, #low(TIMER1_RELOAD)                    ;Timer high 8-bits
-031A D28E       481            setb TR1                                                ;Enable timer 0
-031C C2AB       482            clr ET1
-031E            483            
-031E 75C800     484            mov T2CON, #00H                                                 ;Autoreload is enabled, work as a timer
-0321 C2CA       485       clr TR2
-0323 C2CF       486       clr TF2                                                                              
-0325 75CB93     487       mov RCAP2H,#high(TIMER2_RELOAD)                      ;Set up timer 2 to interrupt every 10ms
-0328 75CA7F     488       mov RCAP2L,#low(TIMER2_RELOAD)
-032B D2CA       489       setb TR2                                                             ;Enable timer 2
-032D D2AD       490       setb ET2                                                             ;Enable timer 2 interrupt
-032F            491   
-032F D2AF       492       setb EA                                                              ;Enable all interrupts
-0331            493       
-0331 D2DB       494       setb LCD_ON
-0333 C2D9       495       clr LCD_EN                                                           ;Default state of enable must be zero
-0335 1202B7     496       lcall Wait40us
-0338            497       
-0338 75DAFF     498       mov LCD_MOD, #0xff                                           ;Use LCD_DATA as output port
-033B C2D8       499       clr LCD_RW                                                           ;Only writing to the LCD in this code.
-033D            500            
-033D 740C       501            mov a, #0ch                                                     ;Display on command
-033F 1202C2     502            lcall LCD_command
-0342 7438       503            mov a, #38H                                                     ;8-bits interface, 2 lines, 5x7 characters
-0344 1202C2     504            lcall LCD_command
-0347            505            
-0347 120284     506            lcall WriteClock
-034A            507      
-034A 753100     508       mov seconds, #00H
-034D 753200     509            mov minutes, #00H
-0350 753312     510            mov hours, #12H
-0353            511           
-0353 C200       512            clr meridiem
-0355 C201       513            clr meridiemAlarm
-0357            514   
-0357 753400     515       mov AlarmCount+0, #00H
-035A 753500     516            mov AlarmCount+1, #00H
-035D 753612     517            mov AlarmCount+2, #12H
-0360            518   
-0360            519   Forever:
-0360 1201FA     520            lcall SetTime
-0363 80FB       521            sjmp Forever
-0365            522   EN
+0038 FF          40       DB 0FFH                                                              ;All segments off
+0039             41   
+0039             42   ISR_Timer0:
+0039 758CFD      43       mov TH0, #high(TIMER0_RELOAD)
+003C 758A4A      44       mov TL0, #low(TIMER0_RELOAD)
+003F E530        45            mov a, count10ms
+0041 9432        46            subb a, #50
+0043 400C        47            jc ISR_timer1                                                    ; alternates beeping half the time
+0045 C280        48            clr P0.0
+0047 75E800      49            mov LEDRA, #0
+004A 759500      50            mov LEDRB, #0
+004D 759E00      51            mov LEDRC, #0
+0050 32          52            reti
+0051             53   
+0051             54   ISR_timer1:      
+0051 B280        55            cpl P0.0
+0053 758DFD      56            mov TH1, #high(TIMER1_RELOAD)
+0056 758B4A      57            mov TL1, #low(TIMER1_RELOAD)
+0059 75E8FF      58            mov LEDRA, #11111111B
+005C 7595FF      59            mov LEDRB, #11111111B
+005F 759E03      60            mov LEDRC, #11B
+0062 32          61            reti
+0063             62            
+0063             63   ;        cpl P0.0                                                                ;Compliments the bit of P0.0
+0063             64   ;        mov TH0, #high(TIMER0_RELOAD)
+0063             65   ;        mov TL0, #low(TIMER0_RELOAD)
+0063             66   ;        reti
+0063             67   
+0063             68   ISR_Timer2:
+0063 C0D0        69            push psw
+0065 C0E0        70       push acc
+0067 C083        71       push dph
+0069 C082        72       push dpl
+006B             73       
+006B C2CF        74       clr TF2
+006D B281        75            cpl P0.1
+006F             76       
+006F 20EA03      77       jb SWA.2, Alarm                                                      ;if SWA.2 is flipped, alarm is set, check if alarm should go off
+0072 30EA05      78       jnb SWA.2, NoAlarm                                           ;if SWA.2 is off, no alarm is set 
+0075             79   Alarm:
+0075 120119      80       lcall CheckAlarm
+0078 8007        81       sjmp Continue
+007A             82   NoAlarm:         
+007A 120296      83            lcall WriteClock                                                ;Display clock on LCD screen
+007D C2FB        84            clr LEDG.3                      
+007F C2A9        85            clr ET0                                                                         ;Clear Timer 0 ISR
+0081             86   Continue:
+0081 20E845      87       jb SWA.0, ISR_Timer2_L0                              ;Setting up time, does not increment anything
+0084             88       
+0084             89       ;Increment the counter and check if a second has passed
+0084 0530        90       inc count10ms
+0086 E530        91       mov a, count10ms
+0088 B4643E      92       cjne A, #100, ISR_Timer2_L0
+008B 753000      93       mov count10ms, #0
+008E             94       
+008E             95       ;increment seconds
+008E E531        96       mov a, seconds
+0090 2401        97       add a, #1
+0092 D4          98       da a
+0093 F531        99       mov seconds, a
+0095 B46031     100       cjne A, #60H, ISR_Timer2_L0
+0098 753100     101       mov seconds, #0
+009B            102   
+009B            103            ;increment minutes
+009B E532       104       mov a, minutes
+009D 2401       105       add a, #1
+009F D4         106       da a
+00A0 F532       107       mov minutes, a
+00A2 B46024     108       cjne A, #60H, ISR_Timer2_L0
+00A5 753200     109       mov minutes, #0
+00A8            110   
+00A8            111            ;increment hours
+00A8 E533       112       mov a, hours
+00AA 2401       113       add a, #1
+00AC D4         114       da a
+00AD F533       115       mov hours, a
+00AF            116       
+00AF B41211     117       cjne A, #12H, SkipMeridiem
+00B2            118   CPLMeridiem:                                                             ;if the clock is at 12 hours, change AM/PM
+00B2 B200       119            cpl meridiem
+00B4 300003     120            jnb meridiem, AM
+00B7 200006     121            jb meridiem, PM
+00BA 759108     122   AM:      mov HEX0, #08H
+00BD 0200C9     123            ljmp ISR_Timer2_L0
+00C0 75910C     124   PM: mov HEX0, #0CH
+00C3            125   SkipMeridiem:                                                            ;if clock is at 13 hours, move 1 to hours
+00C3 B41303     126            cjne A, #13H, ISR_Timer2_L0
+00C6 753301     127       mov hours, #1
+00C9            128       
+00C9            129   ISR_Timer2_L0:
+00C9 20E944     130            jb SWA.1, Do_Nothing                                    ;if SWA.1 is up, increment clock, do not display
+00CC 90002E     131            mov dptr, #myLUT
+00CF            132   
+00CF 300003     133            jnb meridiem, InitMeridiemAM                    ;Display AM/PM
+00D2 200006     134            jb meridiem, InitMeridiemPM
+00D5            135   InitMeridiemAM:
+00D5 759108     136            mov HEX0, #08H
+00D8 0200DE     137            ljmp M15
+00DB            138   InitMeridiemPM:
+00DB 75910C     139            mov HEX0, #0CH
+00DE            140   
+00DE            141   M15:
+00DE E531       142            mov a, seconds                                                  ;Display seconds
+00E0 540F       143            anl a, #0fH
+00E2 93         144            movc a, @a+dptr
+00E3 F593       145            mov HEX2, a
+00E5 E531       146            mov a, seconds
+00E7 C4         147            swap a
+00E8 540F       148            anl a, #0fH
+00EA 93         149            movc a, @a+dptr
+00EB F594       150            mov HEX3, a
+00ED            151   
+00ED E532       152            mov a, minutes                                                  ;Display minutes
+00EF 540F       153            anl a, #0fH     
+00F1 93         154            movc a, @a+dptr
+00F2 F58E       155            mov HEX4, a
+00F4 E532       156            mov a, minutes
+00F6 C4         157            swap a
+00F7 540F       158            anl a, #0fH
+00F9 93         159            movc a, @a+dptr
+00FA F58F       160            mov HEX5, a
+00FC            161   
+00FC E533       162            mov a, hours                                                    ;Display hours
+00FE 540F       163            anl a, #0fH
+0100 93         164            movc a, @a+dptr
+0101 F596       165            mov HEX6, a
+0103 E533       166            mov a, hours
+0105 20E402     167            jb acc.4, ISR_Timer2_L1                                         ;If hour between 1-9, nothing displayed on HEX7
+0108 74A0       168            mov a, #0A0H
+010A            169   ISR_Timer2_L1:
+010A C4         170            swap a
+010B 540F       171            anl a, #0fH
+010D 93         172            movc a, @a+dptr
+010E F597       173            mov HEX7, a
+0110            174   
+0110            175   Do_Nothing:
+0110 D082       176            pop dpl
+0112 D083       177            pop dph
+0114 D0E0       178            pop acc
+0116 D0D0       179            pop psw    
+0118 32         180            reti
+0119            181   
+0119            182   ;Checks if clock time matches alarm time and sounds buzzer
+0119            183   CheckAlarm:                                                              
+0119 20A905     184            jb ET0, M20                                                             ;if interrupt 0 is enabled, write "wake up" to LCD
+011C 120279     185            lcall WriteAlarm                                                ;otherwise write "alarm"
+011F 8003       186            sjmp M21
+0121 120252     187   M20:lcall WriteWakeUp
+0124 200006     188   M21:jb meridiem, M22
+0127 300109     189            jnb meridiemAlarm, CheckHour
+012A 02015B     190            ljmp ReturnISR                                                  ;check if AM/PM matches
+012D 200103     191   M22:jb meridiemAlarm, CheckHour
+0130 02015B     192            ljmp ReturnISR
+0133            193   CheckHour:
+0133 E533       194            mov a, hours                                                    ;check if hours match
+0135 8536F0     195            mov b, AlarmCount+2
+0138 C3         196            clr c
+0139 95F0       197            subb a,b
+013B 6002       198            jz CheckMin
+013D 801C       199            sjmp ReturnISR
+013F            200   CheckMin:                                                                        ;check if minutes match
+013F E532       201            mov a, minutes
+0141 8535F0     202            mov b, AlarmCount+1
+0144 C3         203            clr c
+0145 95F0       204            subb a, b
+0147 6002       205            jz CheckSec
+0149 8010       206            sjmp ReturnISR
+014B            207   CheckSec:                                                                        ;check if seconds match
+014B E531       208            mov a, seconds
+014D 8534F0     209            mov b, AlarmCount+0
+0150 C3         210            clr c
+0151 95F0       211            subb a,b 
+0153 6002       212            jz SoundAlarm
+0155 8004       213            sjmp ReturnISR
+0157            214   SoundAlarm:                                                                      ;if time matches, enable timer 0 interrupt, return to timer 2 ISR
+0157 D2FB       215            setb LEDG.3
+0159 D2A9       216            setb ET0
+015B            217   ReturnISR:
+015B 22         218            ret
+015C            219   
+015C            220   ;Displays time we are setting alarm to on HEX display
+015C            221   DisplayAlarmVal:         
+015C 90002E     222            mov dptr, #myLUT        
+015F            223   ; Display Digit 1
+015F E534       224            mov A, AlarmCount+0
+0161 540F       225       anl A, #0FH
+0163 93         226       movc A, @A+dptr
+0164 F593       227       mov HEX2, A   
+0166            228   ; Display Digit 2
+0166 E534       229       mov A, AlarmCount+0
+0168 C4         230       swap A
+0169 540F       231       anl A, #0FH
+016B 93         232       movc A, @A+dptr
+016C F594       233       mov HEX3, A         
+016E            234   ; Display digit 3
+016E E535       235            mov A, AlarmCount+1
+0170 540F       236            anl A, #0FH
+0172 93         237            movc A, @A+dptr
+0173 F58E       238            mov HEX4, A        
+0175            239   ;Display digit 4
+0175 E535       240            mov A, AlarmCount+1
+0177 C4         241            swap A
+0178 540F       242            anl A, #0FH
+017A 93         243            movc A, @A+dptr
+017B F58F       244            mov HEX5, A        
+017D            245   ;Display digit 5
+017D E536       246            mov A, AlarmCount+2
+017F 540F       247            anl A, #0FH
+0181 93         248            movc A, @A+dptr
+0182 F596       249            mov HEX6, A
+0184            250   ;Display digit 6
+0184 E536       251            mov A, AlarmCount+2
+0186 20E402     252            jb acc.4, I0
+0189 74A0       253            mov a, #0A0H
+018B C4         254   I0:      swap A
+018C 540F       255            anl A, #0FH
+018E 93         256            movc A, @A+dptr
+018F F597       257            mov HEX7, A
+0191 22         258            ret
+0192            259            
+0192            260   SetAlarm:
+0192 12015C     261            lcall DisplayAlarmVal                                   ;initially displays 12:00:00 AM on screen
+0195 20F913     262            jb KEY.1, M6                                                    ;if KEY.1 is not pressed, check KEY.2
+0198 30F9FD     263            jnb KEY.1, $                                                    ;wait for key to be released
+019B E534       264            mov a, AlarmCount+0                                             ;increment seconds, and display
+019D 2401       265       add a, #1
+019F D4         266       da a
+01A0 F534       267       mov AlarmCount+0, a
+01A2 B460B7     268       cjne A, #60H, DisplayAlarmVal
+01A5 753400     269       mov AlarmCount+0, #0
+01A8 02015C     270       ljmp DisplayAlarmVal
+01AB 20FA13     271   M6:      jb KEY.2, M7                                                    ;if KEY.2 is not pressed, check KEY.3
+01AE 30FAFD     272       jnb KEY.2, $                                                         ;wait for key to be released
+01B1 E535       273       mov a, AlarmCount+1                                          ;increment minutes and display
+01B3 2401       274            add a, #1
+01B5 D4         275            da a
+01B6 F535       276            mov AlarmCount+1, a
+01B8 B460A1     277       cjne A, #60H, DisplayAlarmVal
+01BB 753500     278       mov AlarmCount+1, #0
+01BE 02015C     279       ljmp DisplayAlarmVal
+01C1 20FB16     280   M7: jb KEY.3, M9                                                         ;if KEY.3 is not pressed, check if SWA.1 is flipped
+01C4 30FBFD     281            jnb KEY.3, $                                                    ;wait for key to be released
+01C7 E536       282            mov a, AlarmCount+2                                             ;increment hours and display
+01C9 2401       283            add a, #1
+01CB D4         284            da a
+01CC F536       285            mov AlarmCount+2, a
+01CE 1201E0     286            lcall AlarmAMPM                                                         ;change AM/PM values every 12 hours
+01D1 B41388     287       cjne A, #13H, DisplayAlarmVal
+01D4 753601     288       mov AlarmCount+2, #1H
+01D7 02015C     289       ljmp DisplayAlarmVal
+01DA 20E9B5     290   M9:      jb SWA.1, SetAlarm                                              ;if SWA.1 is still flipped, jump back to beginning of function                  
+01DD 020251     291            ljmp M4                                                                         ;if SWA.1 is not flipped, back to forever loop
+01E0            292   
+01E0            293   ;checks value stored in AlarmCount+2 and changes AM/PM accordingly
+01E0            294   AlarmAMPM:                                                                       
+01E0 E536       295            mov a, AlarmCount+2
+01E2 B41210     296            cjne a, #12H, returnAlarm                               ;if not 12:00:00, AM/PM does not need to be changed
+01E5 B201       297            cpl meridiemAlarm                                               ;if equal to 12, complement bit
+01E7 300103     298            jnb meridiemAlarm, ChangeToAMAlarm              ;if bit = 0, change to AM
+01EA 200105     299            jb meridiemAlarm, ChangeToPMAlarm               ;if bit = 1, change to PM
+01ED            300   ChangeToAMAlarm:
+01ED 759108     301            mov HEX0, #08H
+01F0 8003       302            sjmp returnAlarm
+01F2            303   ChangeToPMAlarm:
+01F2 75910C     304            mov HEX0, #0CH
+01F5            305   returnAlarm:                                                             ;return to set alarm function
+01F5 22         306            ret
+01F6            307           
+01F6            308   ChangeMeridiem:
+01F6 E533       309            mov a, hours
+01F8 B41210     310            cjne a, #12H, ReturnMeridiem                    ;if not 12:00:00, AM/PM does not need to be changed
+01FB B200       311            cpl meridiem                                                    ;if equal to 12, complement bit
+01FD 300003     312            jnb meridiem, ChangeToAM                                ;if bit = 0, change to AM
+0200 200005     313            jb meridiem, ChangeToPM                                         ;if bit = 1, change to PM
+0203            314   ChangeToAM:
+0203 759108     315            mov HEX0, #08H
+0206 8003       316            sjmp ReturnMeridiem
+0208            317   ChangeToPM:
+0208 75910C     318            mov HEX0, #0CH
+020B            319   ReturnMeridiem:                                                          ;return to set time function
+020B 22         320            ret
+020C            321   
+020C            322   ;checks if SWA.0 or SWA.1 is flipped
+020C            323   ;sets time 
+020C            324   SetTime:
+020C 20E983     325            jb SWA.1, SetAlarm                                              ;if SWA.1 is up, set alarm
+020F 30E83F     326            jnb SWA.0, M4                                                   ;if SWA.0 is down, cannot set time, clock continues to increment
+0212 20FB13     327            jb KEY.3, M1
+0215 30FBFD     328       jnb KEY.3, $                                                         ;if KEY.3 is pressed, increment hours
+0218 E533       329       mov a, hours
+021A 2401       330            add a, #1
+021C D4         331            da a
+021D F533       332            mov hours, a
+021F 1201F6     333            lcall ChangeMeridiem                                    ;change AM/PM accordingly
+0222 B41303     334       cjne A, #13H, M1
+0225 753301     335       mov hours, #1
+0228            336   M1:        
+0228 20FA10     337            jb KEY.2, M2
+022B 30FAFD     338       jnb KEY.2, $                                                         ;if KEY.2 is pressed, increment minutes
+022E E532       339       mov a, minutes
+0230 2401       340            add a, #1
+0232 D4         341            da a
+0233 F532       342            mov minutes, a
+0235 B46003     343            cjne A, #60H, M2
+0238 753200     344            mov minutes, #0
+023B            345   M2:        
+023B 20F910     346            jb KEY.1, M3
+023E 30F9FD     347            jnb KEY.1, $                                                    ;if KEY.1 is pressed, increment seconds
+0241 E531       348            mov a, seconds
+0243 2401       349            add a, #1
+0245 D4         350            da a
+0246 F531       351            mov seconds, a
+0248 B46003     352            cjne A, #60H, M3
+024B 753100     353            mov seconds, #0
+024E            354   M3:        
+024E 02020C     355            ljmp SetTime                                                    ;loop through function until SWA.0 is not flipped
+0251            356   M4:      
+0251 22         357            ret
+0252            358   
+0252            359   ;Writes WAKE UP to LCD screen when buzzer is sounded
+0252            360   WriteWakeUp:
+0252 1202B3     361            lcall ClearScreen
+0255 7457       362            mov a, #'W'     
+0257 1202E7     363            lcall LCD_put
+025A 7441       364            mov a, #'A'     
+025C 1202E7     365            lcall LCD_put
+025F 744B       366            mov a, #'K'     
+0261 1202E7     367            lcall LCD_put
+0264 7445       368            mov a, #'E'     
+0266 1202E7     369            lcall LCD_put
+0269 7420       370            mov a, #' '     
+026B 1202E7     371            lcall LCD_put
+026E 7455       372            mov a, #'U'     
+0270 1202E7     373            lcall LCD_put
+0273 7450       374            mov a, #'P'     
+0275 1202E7     375            lcall LCD_put
+0278 22         376            ret
+0279            377   
+0279            378   ;Writes ALARM to LCD screen when alarm is set
+0279            379   WriteAlarm:
+0279 1202B3     380            lcall ClearScreen
+027C 7441       381            mov a, #'A'     
+027E 1202E7     382            lcall LCD_put
+0281 744C       383            mov a, #'L'     
+0283 1202E7     384            lcall LCD_put
+0286 7441       385            mov a, #'A'     
+0288 1202E7     386            lcall LCD_put
+028B 7452       387            mov a, #'R'     
+028D 1202E7     388            lcall LCD_put
+0290 744D       389            mov a, #'M'     
+0292 1202E7     390            lcall LCD_put
+0295 22         391            ret
+0296            392   
+0296            393   ;Writes clock to LCD screen when clock is incrementing
+0296            394   WriteClock:
+0296 1202B3     395            lcall ClearScreen
+0299 7443       396            mov a, #'C'     
+029B 1202E7     397            lcall LCD_put
+029E 744C       398            mov a, #'L'     
+02A0 1202E7     399            lcall LCD_put
+02A3 744F       400            mov a, #'O'     
+02A5 1202E7     401            lcall LCD_put
+02A8 7443       402            mov a, #'C'     
+02AA 1202E7     403            lcall LCD_put
+02AD 744B       404            mov a, #'K'     
+02AF 1202E7     405            lcall LCD_put
+02B2 22         406            ret
+02B3            407   
+02B3            408   ;Clears screen
+02B3            409   ClearScreen:
+02B3 7401       410            mov a, #01H 
+02B5 1202D4     411            lcall LCD_command       
+02B8 7928       412            mov R1, #40
+02BA 1202C3     413            lcall Clr_loop
+02BD 7480       414            mov a, #80H
+02BF 1202D4     415            lcall LCD_command
+02C2 22         416            ret
+02C3            417   
+02C3            418   
+02C3            419   Clr_loop:
+02C3 1202C9     420            lcall Wait40us
+02C6 D9FB       421            djnz R1, Clr_loop
+02C8 22         422            ret      
+02C9            423            
+02C9            424   Wait40us:
+02C9 7895       425            mov R0, #149
+02CB            426   X1: 
+02CB 00         427            nop
+02CC 00         428            nop
+02CD 00         429            nop
+02CE 00         430            nop
+02CF 00         431            nop
+02D0 00         432            nop
+02D1 D8F8       433            djnz R0, X1                                                     ;9 machine cycles-> 9*30ns*149=40us
+02D3 22         434       ret
+02D4            435   
+02D4            436   LCD_command:
+02D4 F5D9       437            mov     LCD_DATA, A
+02D6 C2DA       438            clr     LCD_RS
+02D8 00         439            nop
+02D9 00         440            nop
+02DA D2D9       441            setb LCD_EN                                                     ;Enable pulse should be at least 230 ns
+02DC 00         442            nop
+02DD 00         443            nop
+02DE 00         444            nop
+02DF 00         445            nop
+02E0 00         446            nop
+02E1 00         447            nop
+02E2 C2D9       448            clr     LCD_EN
+02E4 0202C9     449            ljmp Wait40us
+02E7            450   
+02E7            451   LCD_put:
+02E7 F5D9       452            mov     LCD_DATA, A
+02E9 D2DA       453            setb LCD_RS
+02EB 00         454            nop
+02EC 00         455            nop
+02ED D2D9       456            setb LCD_EN                                                     ;Enable pulse should be at least 230 ns
+02EF 00         457            nop
+02F0 00         458            nop
+02F1 00         459            nop
+02F2 00         460            nop
+02F3 00         461            nop
+02F4 00         462            nop
+02F5 C2D9       463            clr     LCD_EN
+02F7 0202C9     464            ljmp Wait40us   
+02FA            465            
+02FA            466   Startup:
+02FA 75817F     467            mov SP, #7FH
+02FD 75E800     468            mov LEDRA,#0
+0300 759500     469            mov LEDRB,#0
+0303 759E00     470            mov LEDRC,#0
+0306 75F800     471            mov LEDG,#0
+0309            472            
+0309 759A03     473            mov P0MOD, #00000011B                                   ;P0.0, P0.1 are outputs.  P0.1 is used for testing Timer 2!
+030C D280       474            setb P0.0                                               ;Sets P0.0 to 1
+030E            475   
+030E 758901     476            mov TMOD,  #00000001B                                   ;GATE=0, C/T*=0, M1=0, M0=1: 16-bit timer
+0311 C28C       477            clr TR0                                                 ;Disable timer 0
+0313 C28D       478            clr TF0                                                 ;Clear timer 0 flag
+0315 758CFD     479            mov TH0, #high(TIMER0_RELOAD)                   ;Timer low 8-bits
+0318 758A4A     480            mov TL0, #low(TIMER0_RELOAD)                    ;Timer high 8-bits
+031B D28C       481            setb TR0                                                ;Enable timer 0
+031D C2A9       482            clr ET0                                                 ;Disable timer 0 interrupt
+031F            483            
+031F 758910     484            mov TMOD,  #00010000B                                   ;GATE=0, C/T*=0, M1=0, M0=1: 16-bit timer
+0322 C28E       485            clr TR1                                                 ;Disable timer 0
+0324 C28F       486            clr TF1                                                 ;Clear timer 0 flag
+0326 758DFD     487            mov TH1, #high(TIMER1_RELOAD)                   ;Timer low 8-bits
+0329 758B4A     488            mov TL1, #low(TIMER1_RELOAD)                    ;Timer high 8-bits
+032C D28E       489            setb TR1                                                ;Enable timer 0
+032E C2AB       490            clr ET1
+0330            491            
+0330 75C800     492            mov T2CON, #00H                                                 ;Autoreload is enabled, work as a timer
+0333 C2CA       493       clr TR2
+0335 C2CF       494       clr TF2                                                                              
+0337 75CB93     495       mov RCAP2H,#high(TIMER2_RELOAD)                      ;Set up timer 2 to interrupt every 10ms
+033A 75CA7F     496       mov RCAP2L,#low(TIMER2_RELOAD)
+033D D2CA       497       setb TR2                                                             ;Enable timer 2
+033F D2AD       498       setb ET2                                                             ;Enable timer 2 interrupt
+0341            499   
+0341 D2AF       500       setb EA                                                              ;Enable all interrupts
+0343            501       
+0343 D2DB       502       setb LCD_ON
+0345 C2D9       503       clr LCD_EN                                                           ;Default state of enable must be zero
+0347 1202C9     504       lcall Wait40us
+034A            505       
+034A 75DAFF     506       mov LCD_MOD, #0xff                                           ;Use LCD_DATA as output port
+034D C2D8       507       clr LCD_RW                                                           ;Only writing to the LCD in this code.
+034F            508            
+034F 740C       509            mov a, #0ch                                                     ;Display on command
+0351 1202D4     510            lcall LCD_command
+0354 7438       511            mov a, #38H                                                     ;8-bits interface, 2 lines, 5x7 characters
+0356 1202D4     512            lcall LCD_command
+0359            513            
+0359 120296     514            lcall WriteClock
+035C            515      
+035C 753100     516       mov seconds, #00H
+035F 753200     517            mov minutes, #00H
+0362 753312     518            mov hours, #12H
+0365            519           
+0365 C200       520            clr meridiem
+0367 C201       521            clr meridiemAlarm
+0369            522   
+0369 753400     523       mov AlarmCount+0, #00H
+036C 753500     524            mov AlarmCount+1, #00H
+036F 753612     525            mov AlarmCount+2, #12H
+0372            526   
+0372            527   Forever:
+0372 12020C     528            lcall SetTime
+0375 80FB       529            sjmp Forever
+0377            530   EN
