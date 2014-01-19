@@ -1,4 +1,4 @@
-; dac.asm: uses a R-2R ladder DAC to generate a ramp 
+ 
 $MODDE2 
 org 0000H 
 	ljmp myprogram
@@ -10,7 +10,7 @@ x: ds 2
 y: ds 2
 
 CSEG
-        myLUT:        ; Look-up table for 7-seg displays
+        myLUT:      ;Look-up table for 7-seg displays
         DB 0C0H, 0F9H, 0A4H, 0B0H, 099H                ; 0 TO 4
         DB 092H, 082H, 0F8H, 080H, 090H                ; 4 TO 9
         DB 088H, 083H, 0C6H, 0A1H, 086H, 0FFH ; A TO F
@@ -25,65 +25,78 @@ delay100us:
 
  
 DisplayBin:
-     mov dptr, #myLUT
-     ; Display Digit 0
-     mov A, R0
-        anl a, #0fh
-        movc A, @A+dptr
-        mov HEX0, A
-        ; Display Digit 1
-        mov A, R0
-        swap a
-        anl a, #0fh
-        movc A, @A+dptr
-        mov HEX1, A
-        ; Display Digit 2
-        mov A, R1
-        anl a, #0fh
-        movc A, @A+dptr
-        mov HEX2, A
-        ret
+    mov dptr, #myLUT
+	; Display Digit 0
+	mov A, R0
+	anl a, #0fh
+    movc A, @A+dptr
+    mov HEX0, A
+    ; Display Digit 1
+    mov A, R0
+    swap a
+    anl a, #0fh
+    movc A, @A+dptr
+    mov HEX1, A
+    ; Display Digit 2
+    mov A, R1
+    anl a, #0fh
+    movc A, @A+dptr
+    mov HEX2, A
+    ret
+
+ReadNumber:
+	jnb SWA.0, H1
+	mov x+0, R6
+	sjmp H2
+H1:	mov x+0, R7                ; Reads SW0-7, sets x-low
+H2: mov x+1, #0                        ; Sets x-high
+    ret
+
         
-;VoltageVal:
+VoltageVal:
         mov dptr, #myVoltTable
         mov y, #2                        ; Each row has two entries (DW is two bytes)
         lcall mul16                ; Multiplies by two
         mov y+1, dph                ; Sets high to the first 8-bits of y
         mov y+0, dpl                ; Sets low to the last 8-bits of y
         lcall add16                        ; 
-        mov dph, R0                ; Sets high to the first 8-bits of x
-        mov dpl, R1                ; Sets low to the last 8-bits of x
+        mov dph, x+1                ; Sets high to the first 8-bits of x
+        mov dpl, x+0                ; Sets low to the last 8-bits of x
 
         clr a
         movc a, @a+dptr                ; Selects the first 8-bits to display
-        mov R1, a                        ; Sets the first 8-bits of the value
+        mov x+1, a                        ; Sets the first 8-bits of the value
         inc dptr                        ; Increments dptr to select second bit
         clr a 
         movc a, @a+dptr                ; Selects the second 8-bits to display
-        mov R0, a                        ; Sets the second 8-bits of the value
-        lcall hex2bcd
- ;       lcall Display
+        mov x+0, a                        ; Sets the second 8-bits of the value
         ret
 
-;Display:
-	 	mov dptr, #myLUT
-     	; Display Digit 0
-     	mov A, bcd+0
-        anl a, #0fh
-        movc A, @A+dptr
-        mov HEX0, A
-        ; Display Digit 1
-        mov A, bcd+0
-        swap a
-        anl a, #0fh
-        movc A, @A+dptr
-        mov HEX1, A
-        ; Display Digit 2
-        mov A, bcd+1
-        anl a, #0fh
-        movc A, @A+dptr
-        mov HEX2, A
-        
+Display:
+	 mov dptr, #myLUT
+     ; Display Digit 0
+     mov A, bcd+0
+     anl a, #0fh
+     movc A, @A+dptr
+     mov HEX0, A
+     ; Display Digit 1
+     mov A, bcd+0
+     swap a
+     anl a, #0fh
+     movc A, @A+dptr
+     mov HEX1, A
+     ; Display Digit 2
+     mov A, bcd+1
+     anl a, #0fh
+     movc A, @A+dptr
+     mov HEX2, A
+     ; Display Digit 3
+     mov A, bcd+1
+     swap a
+     anl a, #0fh
+     movc A, @A+dptr
+     mov HEX3, A
+     ret
 
 WriteGreen:
 	lcall ClearScreen
@@ -115,7 +128,6 @@ WriteGreen:
 	lcall LCD_put
 	mov a, #'N'	
 	lcall LCD_put
-
 	ret
 	
 WriteRed:
@@ -307,15 +319,16 @@ CheckInputs:
 	jb SWA.0,SW0T
 SW0F:
 	mov a, R6
-	lcall WriteGreen
+	lcall WriteRed
 	sjmp Cont
 SW0T:
 	mov a, R7
-	lcall WriteRed
+	lcall WriteGreen
 Cont:
-	lcall bin2bcd8
-	lcall DisplayBin
-;	lcall VoltageVal
+	lcall ReadNumber
+	lcall VoltageVal
+	lcall hex2bcd
+	lcall display
 	ret
 
 myprogram: 
