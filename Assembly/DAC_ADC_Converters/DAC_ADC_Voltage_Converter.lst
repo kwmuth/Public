@@ -1,0 +1,502 @@
+                 -1   $MODDE2 
+0000              1   ;  MODDDE2: Register definition for DE2-8052 softcore
+0000              2   ;
+0000              3   ;   Copyright (C) 2011  Jesus Calvino-Fraga, jesusc at ece.ubc.ca
+0000              4   ;
+0000              5   ;   This library is free software; you can redistribute it and/or
+0000              6   ;   modify it under the terms of the GNU Lesser General Public
+0000              7   ;   License as published by the Free Software Foundation; either
+0000              8   ;   version 2.1 of the License, or (at your option) any later version.
+0000              9   ;
+0000             10   ;   This library is distributed in the hope that it will be useful,
+0000             11   ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
+0000             12   ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+0000             13   ;   Lesser General Public License for more details.
+0000             14   ;
+0000             15   ;   You should have received a copy of the GNU Lesser General Public
+0000             16   ;   License along with this library; if not, write to the Free Software
+0000             17   ;   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+0000             18   ;
+0000             19       
+0000             20   P0     DATA  080H  ;PORT 0
+0000             21   SP     DATA  081H  ;STACK POINTER
+0000             22   DPL    DATA  082H  ;DATA POINTER - LOW BYTE
+0000             23   DPH    DATA  083H  ;DATA POINTER - HIGH BYTE
+0000             24   PCON   DATA  087H  ;POWER CONTROL
+0000             25   TCON   DATA  088H  ;TIMER CONTROL
+0000             26   TMOD   DATA  089H  ;TIMER MODE
+0000             27   TL0    DATA  08AH  ;TIMER 0 - LOW BYTE
+0000             28   TL1    DATA  08BH  ;TIMER 1 - LOW BYTE
+0000             29   TH0    DATA  08CH  ;TIMER 0 - HIGH BYTE
+0000             30   TH1    DATA  08DH  ;TIMER 1 - HIGH BYTE
+0000             31   P1     DATA  090H  ;PORT 1
+0000             32   SCON   DATA  098H  ;SERIAL PORT CONTROL
+0000             33   SBUF   DATA  099H  ;SERIAL PORT BUFFER
+0000             34   P2     DATA  0A0H  ;PORT 2
+0000             35   IE     DATA  0A8H  ;INTERRUPT ENABLE
+0000             36   P3     DATA  0B0H  ;PORT 3
+0000             37   IP     DATA  0B8H  ;INTERRUPT PRIORITY
+0000             38   T2CON  DATA  0C8H  ;TIMER 2 CONTROL
+0000             39   T2MOD  DATA  0C9H  ;TIMER 2 MODE
+0000             40   RCAP2L DATA  0CAH  ;TIMER 2 CAPTURE REGISTER - LOW BYTE
+0000             41   RCAP2H DATA  0CBH  ;TIMER 2 CAPTURE REGISTER - HIGH BYTE
+0000             42   TL2    DATA  0CCH  ;TIMER 2 - LOW BYTE
+0000             43   TH2    DATA  0CDH  ;TIMER 2 - HIGH BYTE
+0000             44   PSW    DATA  0D0H  ;PROGRAM STATUS WORD
+0000             45   ACC    DATA  0E0H  ;ACCUMULATOR
+0000             46   B      DATA  0F0H  ;MULTIPLICATION REGISTER
+0000             47   IT0    BIT   088H  ;TCON.0 - EXT. INTERRUPT 0 TYPE
+0000             48   IE0    BIT   089H  ;TCON.1 - EXT. INTERRUPT 0 EDGE FLAG
+0000             49   IT1    BIT   08AH  ;TCON.2 - EXT. INTERRUPT 1 TYPE
+0000             50   IE1    BIT   08BH  ;TCON.3 - EXT. INTERRUPT 1 EDGE FLAG
+0000             51   TR0    BIT   08CH  ;TCON.4 - TIMER 0 ON/OFF CONTROL
+0000             52   TF0    BIT   08DH  ;TCON.5 - TIMER 0 OVERFLOW FLAG
+0000             53   TR1    BIT   08EH  ;TCON.6 - TIMER 1 ON/OFF CONTROL
+0000             54   TF1    BIT   08FH  ;TCON.7 - TIMER 1 OVERFLOW FLAG
+0000             55   RI     BIT   098H  ;SCON.0 - RECEIVE INTERRUPT FLAG
+0000             56   TI     BIT   099H  ;SCON.1 - TRANSMIT INTERRUPT FLAG
+0000             57   RB8    BIT   09AH  ;SCON.2 - RECEIVE BIT 8
+0000             58   TB8    BIT   09BH  ;SCON.3 - TRANSMIT BIT 8
+0000             59   REN    BIT   09CH  ;SCON.4 - RECEIVE ENABLE
+0000             60   SM2    BIT   09DH  ;SCON.5 - SERIAL MODE CONTROL BIT 2
+0000             61   SM1    BIT   09EH  ;SCON.6 - SERIAL MODE CONTROL BIT 1
+0000             62   SM0    BIT   09FH  ;SCON.7 - SERIAL MODE CONTROL BIT 0
+0000             63   EX0    BIT   0A8H  ;IE.0 - EXTERNAL INTERRUPT 0 ENABLE
+0000             64   ET0    BIT   0A9H  ;IE.1 - TIMER 0 INTERRUPT ENABLE
+0000             65   EX1    BIT   0AAH  ;IE.2 - EXTERNAL INTERRUPT 1 ENABLE
+0000             66   ET1    BIT   0ABH  ;IE.3 - TIMER 1 INTERRUPT ENABLE
+0000             67   ES     BIT   0ACH  ;IE.4 - SERIAL PORT INTERRUPT ENABLE
+0000             68   ET2    BIT   0ADH  ;IE.5 - TIMER 2 INTERRUPT ENABLE
+0000             69   EA     BIT   0AFH  ;IE.7 - GLOBAL INTERRUPT ENABLE
+0000             70   RXD    BIT   0B0H  ;P3.0 - SERIAL PORT RECEIVE INPUT
+0000             71   TXD    BIT   0B1H  ;P3.1 - SERIAL PORT TRANSMIT OUTPUT
+0000             72   INT0   BIT   0B2H  ;P3.2 - EXTERNAL INTERRUPT 0 INPUT
+0000             73   INT1   BIT   0B3H  ;P3.3 - EXTERNAL INTERRUPT 1 INPUT
+0000             74   T0     BIT   0B4H  ;P3.4 - TIMER 0 COUNT INPUT
+0000             75   T1     BIT   0B5H  ;P3.5 - TIMER 1 COUNT INPUT
+0000             76   WR     BIT   0B6H  ;P3.6 - WRITE CONTROL FOR EXT. MEMORY
+0000             77   RD     BIT   0B7H  ;P3.7 - READ CONTROL FOR EXT. MEMORY
+0000             78   PX0    BIT   0B8H  ;IP.0 - EXTERNAL INTERRUPT 0 PRIORITY
+0000             79   PT0    BIT   0B9H  ;IP.1 - TIMER 0 PRIORITY
+0000             80   PX1    BIT   0BAH  ;IP.2 - EXTERNAL INTERRUPT 1 PRIORITY
+0000             81   PT1    BIT   0BBH  ;IP.3 - TIMER 1 PRIORITY
+0000             82   PS     BIT   0BCH  ;IP.4 - SERIAL PORT PRIORITY
+0000             83   PT2    BIT   0BDH  ;IP.5 - TIMER 2 PRIORITY
+0000             84   CAP2   BIT   0C8H  ;T2CON.0 - CAPTURE OR RELOAD SELECT
+0000             85   CNT2   BIT   0C9H  ;T2CON.1 - TIMER OR COUNTER SELECT
+0000             86   TR2    BIT   0CAH  ;T2CON.2 - TIMER 2 ON/OFF CONTROL
+0000             87   EXEN2  BIT   0CBH  ;T2CON.3 - TIMER 2 EXTERNAL ENABLE FLAG
+0000             88   TCLK   BIT   0CCH  ;T2CON.4 - TRANSMIT CLOCK SELECT
+0000             89   RCLK   BIT   0CDH  ;T2CON.5 - RECEIVE CLOCK SELECTT
+0000             90   EXF2   BIT   0CEH  ;T2CON.6 - EXTERNAL TRANSITION FLAG
+0000             91   TF2    BIT   0CFH  ;T2CON.7 - TIMER 2 OVERFLOW FLAG
+0000             92   P      BIT   0D0H  ;PSW.0 - ACCUMULATOR PARITY FLAG
+0000             93   OV     BIT   0D2H  ;PSW.2 - OVERFLOW FLAG
+0000             94   RS0    BIT   0D3H  ;PSW.3 - REGISTER BANK SELECT 0
+0000             95   RS1    BIT   0D4H  ;PSW.4 - REGISTER BANK SELECT 1
+0000             96   F0     BIT   0D5H  ;PSW.5 - FLAG 0
+0000             97   AC     BIT   0D6H  ;PSW.6 - AUXILIARY CARRY FLAG
+0000             98   CY     BIT   0D7H  ;PSW.7 - CARRY FLAG
+0000             99   
+0000            100   ; For the altera DE2 configured with an 8051/8052 softcore processor
+0000            101   ; we have the following extra registers:
+0000            102   
+0000            103   HEX0   DATA  091H ; Zero turns the segment on
+0000            104   HEX1   DATA  092H ; 
+0000            105   HEX2   DATA  093H ; 
+0000            106   HEX3   DATA  094H ; 
+0000            107   HEX4   DATA  08EH ;
+0000            108   HEX5   DATA  08FH ;
+0000            109   HEX6   DATA  096H ;
+0000            110   HEX7   DATA  097H ;
+0000            111   
+0000            112   P0MOD  DATA  09AH ; Input/output mode bits for port 0.  '1' sets the port to output mode.
+0000            113   P1MOD  DATA  09BH ; Input/output mode bits for port 1
+0000            114   P2MOD  DATA  09CH ; Input/output mode bits for port 2
+0000            115   P3MOD  DATA  09DH ; Input/output mode bits for port 3
+0000            116   
+0000            117   LEDRA  DATA  0E8H ; LEDs LEDR0 to LEDR7 (bit addressable, ex: LEDRA.1 for LEDR1)
+0000            118   LEDRB  DATA  095H ; LEDs LEDR8 to LEDR15
+0000            119   LEDRC  DATA  09EH ; LEDs LEDR16, LEDR15, and LEDG8
+0000            120   LEDG   DATA  0F8H ; LEDs LEDG0 to LEDG7 (bit addressable, ex: LEDG.3 for LEDG3)
+0000            121   SWA    DATA  0E8H ; Switches SW0 to SW7 (bit addressable, ex: SWA.1 for SW1)
+0000            122   SWB    DATA  095H ; Switches SW8 to SW15
+0000            123   SWC    DATA  09EH ; Switches SW16 and SW17
+0000            124   KEY    DATA  0F8H ; KEY1=KEY.1, KEY2=KEY.2, KEY3=KEY.3.  KEY0 is the reset button! 
+0000            125   
+0000            126   LCD_CMD   DATA 0D8H ;
+0000            127   LCD_DATA  DATA 0D9H ;
+0000            128   LCD_MOD   DATA 0DAH ; Write 0xff to make LCD_DATA an output
+0000            129   LCD_RW    BIT  0D8H ; '0' writes to LCD
+0000            130   LCD_EN    BIT  0D9H ; Toggle from '1' to '0'
+0000            131   LCD_RS    BIT  0DAH ; '0' for commands, '1' for data
+0000            132   LCD_ON    BIT  0DBH ; Write '1' to power the LCD
+0000            133   LCD_BLON  BIT  0DCH ; Write '1' to turn on back light
+0000            134   
+0000            135   FLASH_CMD  data 0DBH ; The control bits of the flash memory:
+0000            136   ; bit 0: FL_RST_N  Set to 1 for normal operation
+0000            137   ; bit 1: FL_WE_N
+0000            138   ; bit 2: FL_OE_N
+0000            139   ; bit 3: FL_CE_N
+0000            140   FLASH_DATA data 0DCH ; 8-bit data bus of flash memory.
+0000            141   FLASH_MOD  data 0DDH ; 0xff makes FLASH_DATA output.  0x00 makes FLASH_DATA input.
+0000            142   FLASH_ADD0 data 0E1H ; address bits 0 to 7.
+0000            143   FLASH_ADD1 data 0E2H ; address bits 8 to 15.
+0000            144   FLASH_ADD2 data 0E3H ; address bits 16 to 21.
+0000            145   
+0000              2   org 0000H 
+0000 020399       3            ljmp Startup
+                 -1   	$include(LUT.asm)
+                372   $LIST
+0289            374   
+0289              5   
+0030              6   DSEG at 30H
+0030              7            bcd: ds 3
+0033              8            x: ds 2
+0035              9            y: ds 2
+0037             10   
+0289             11   CSEG
+0289             12            myLUT:  ;Look-up table for 7-seg displays
+0289 C0F9A4B0    13            DB 0C0H, 0F9H, 0A4H, 0B0H, 099H                         ; 0 TO 4
+     99
+028E 9282F880    14            DB 092H, 082H, 0F8H, 080H, 090H                         ; 4 TO 9
+     90
+0293 8883C6A1    15            DB 088H, 083H, 0C6H, 0A1H, 086H, 0FFH   ; A TO F
+     86FF
+0299             16            
+0299             17            myASCII:        ;Look-up table for 7-seg displays
+0299 30313233    18            DB 30H, 31H, 32H, 33H, 34H                      ; 0 TO 4
+     34
+029E 35363738    19            DB 35H, 36H, 37H, 38H, 39H                      ; 4 TO 9
+     39
+02A3 8883C6A1    20            DB 088H, 083H, 0C6H, 0A1H, 086H, 0FFH   ; A TO F
+     86FF
+02A9             21   
+02A9             22   delay100us:      ; 100 micro-second delay subroutine 
+02A9 790A        23            mov R1, #10 
+02AB 786F        24            M0: mov R0, #111 
+02AD D8FE        25            M1: djnz R0, M1 ; 111*30ns*3=10us 
+02AF D9FA        26            djnz R1, M0 ; 10*10us=100us, approximately 
+02B1 22          27            ret
+02B2             28   
+02B2             29   VoltageVal:
+02B2 900089      30            mov dptr, #myVoltTable
+02B5 753502      31            mov y, #2                        ; Each row has two entries (DW is two bytes)
+02B8 120003      32            lcall mul16                ; Multiplies by two
+02BB 858336      33            mov y+1, dph                ; Sets high to the first 8-bits of y
+02BE 858235      34            mov y+0, dpl                ; Sets low to the last 8-bits of y
+02C1 120039      35            lcall add16                        ; 
+02C4 853483      36            mov dph, x+1                ; Sets high to the first 8-bits of x
+02C7 853382      37            mov dpl, x+0                ; Sets low to the last 8-bits of x
+02CA             38            
+02CA E4          39            clr a
+02CB 93          40            movc a, @a+dptr                ; Selects the first 8-bits to display
+02CC F534        41            mov x+1, a                        ; Sets the first 8-bits of the value
+02CE A3          42            inc dptr                        ; Increments dptr to select second bit
+02CF E4          43            clr a 
+02D0 93          44            movc a, @a+dptr                ; Selects the second 8-bits to display
+02D1 F533        45            mov x+0, a                        ; Sets the second 8-bits of the value
+02D3 22          46            ret
+02D4             47   
+02D4             48   Display:
+02D4 900289      49            mov dptr, #myLUT
+02D7             50            ; Display Digit 0
+02D7 E530        51            mov A, bcd+0
+02D9 540F        52            anl a, #0fh
+02DB 93          53            movc A, @A+dptr
+02DC F591        54            mov HEX0, A
+02DE             55            ; Display Digit 1
+02DE E530        56            mov A, bcd+0
+02E0 C4          57            swap a
+02E1 540F        58            anl a, #0fh
+02E3 93          59            movc A, @A+dptr
+02E4 F592        60            mov HEX1, A
+02E6             61            ; Display Digit 2
+02E6 E531        62            mov A, bcd+1
+02E8 540F        63            anl a, #0fh
+02EA 93          64            movc A, @A+dptr
+02EB F593        65            mov HEX2, A
+02ED             66            ; Display Digit 3
+02ED E531        67            mov A, bcd+1
+02EF C4          68            swap a
+02F0 540F        69            anl a, #0fh
+02F2 93          70            movc A, @A+dptr
+02F3 F594        71            mov HEX3, A
+02F5 22          72            ret
+02F6             73   
+02F6             74   DisplayLCD:
+02F6 120329      75            lcall WriteVoltage
+02F9 900299      76            mov dptr, #myASCII
+02FC             77            ; Display Digit 0
+02FC E531        78            mov A, bcd+1
+02FE C4          79            swap a
+02FF 540F        80            anl a, #0fh
+0301 93          81            movc A, @A+dptr
+0302 120386      82            lcall LCD_put   
+0305             83            
+0305 742E        84            mov a, #'.'
+0307 120386      85            lcall LCD_put
+030A             86            
+030A             87            ; Display Digit 1
+030A E531        88            mov A, bcd+1
+030C 540F        89            anl a, #0fh
+030E 93          90            movc A, @A+dptr
+030F 120386      91            lcall LCD_put
+0312             92            ; Display Digit 2
+0312 E530        93            mov A, bcd+0
+0314 C4          94            swap a
+0315 540F        95            anl a, #0fh
+0317 93          96            movc A, @A+dptr
+0318 120386      97            lcall LCD_put
+031B             98            ; Display Digit 3
+031B E530        99            mov A, bcd+0
+031D 540F       100            anl a, #0fh
+031F 93         101            movc A, @A+dptr
+0320 120386     102            lcall LCD_put
+0323            103            
+0323 7456       104            mov a, #'V'
+0325 120386     105            lcall LCD_put
+0328 22         106            ret
+0329            107   
+0329            108   WriteVoltage:
+0329 7456       109            mov a, #'V'
+032B 120386     110            lcall LCD_put
+032E 744F       111            mov a, #'O'
+0330 120386     112            lcall LCD_put
+0333 744C       113            mov a, #'L'
+0335 120386     114            lcall LCD_put
+0338 7454       115            mov a, #'T'
+033A 120386     116            lcall LCD_put
+033D 7441       117            mov a, #'A'
+033F 120386     118            lcall LCD_put
+0342 7447       119            mov a, #'G'
+0344 120386     120            lcall LCD_put
+0347 7445       121            mov a, #'E'
+0349 120386     122            lcall LCD_put
+034C 743A       123            mov a, #':'
+034E 120386     124            lcall LCD_put
+0351 7420       125            mov a, #' '
+0353 120386     126            lcall LCD_put
+0356 22         127            ret
+0357            128   
+0357            129   ClearScreen:             ;Clears screen
+0357 7401       130            mov a, #01H 
+0359 120373     131            lcall LCD_command        
+035C 7928       132            mov R1, #40
+035E 120362     133            lcall Clr_loop
+0361 22         134            ret
+0362            135   
+0362            136   Clr_loop:
+0362 120368     137            lcall Wait40us
+0365 D9FB       138            djnz R1, Clr_loop
+0367 22         139            ret     
+0368            140   
+0368            141   Wait40us:
+0368 7895       142            mov R0, #149
+036A            143   X1: 
+036A 00         144            nop
+036B 00         145            nop
+036C 00         146            nop
+036D 00         147            nop
+036E 00         148            nop
+036F 00         149            nop
+0370 D8F8       150            djnz R0, X1     ;9 machine cycles-> 9*30ns*149=40us
+0372 22         151            ret
+0373            152   
+0373            153   LCD_command:
+0373 F5D9       154            mov LCD_DATA, A
+0375 C2DA       155            clr LCD_RS
+0377 00         156            nop
+0378 00         157            nop
+0379 D2D9       158            setb LCD_EN     ;Enable pulse should be at least 230 ns
+037B 00         159            nop
+037C 00         160            nop
+037D 00         161            nop
+037E 00         162            nop
+037F 00         163            nop
+0380 00         164            nop
+0381 C2D9       165            clr LCD_EN
+0383 020368     166            ljmp Wait40us
+0386            167   
+0386            168   LCD_put:
+0386 F5D9       169            mov LCD_DATA, A
+0388 D2DA       170            setb LCD_RS
+038A 00         171            nop
+038B 00         172            nop
+038C D2D9       173            setb LCD_EN     ;Enable pulse should be at least 230 ns
+038E 00         174            nop
+038F 00         175            nop
+0390 00         176            nop
+0391 00         177            nop
+0392 00         178            nop
+0393 00         179            nop
+0394 C2D9       180            clr LCD_EN
+0396 020368     181            ljmp Wait40us   
+0399            182   
+0399            183   
+                184   CheckInputs_mac Mac
+                185   	mov a, %0
+                186   	lcall LCD_command
+                187   	mov x+0, %1
+                188   	mov x+1, #0
+                189   	clr a
+                190   	mov a, %1
+                191   	lcall VoltageVal
+                192   	lcall hex2bcd
+                193   	lcall DisplayLCD
+                194   endmac
+0399            195   
+                196   SuccessiveApprox_mac Mac
+                197   	mov P3, #0
+                198   	setb %0
+                199   	setb P3.7
+                200   	lcall delay100us
+                201   	jnb %0, %1
+                202   	clr P3.7
+                203   %1:	setb P3.6
+                204   	lcall delay100us
+                205   	jnb %0, %2
+                206   	clr P3.6
+                207   %2:	setb P3.5
+                208   	lcall delay100us
+                209   	jnb %0, %3
+                210   	clr P3.5
+                211   %3:	setb P3.4
+                212   	lcall delay100us
+                213   	jnb %0, %4
+                214   	clr P3.4
+                215   %4:	setb P3.3
+                216   	lcall delay100us
+                217   	jnb %0, %5
+                218   	clr P3.3
+                219   %5:	setb P3.2
+                220   	lcall delay100us
+                221   	jnb %0, %6
+                222   	clr P3.2
+                223   %6:	setb P3.1
+                224   	lcall delay100us
+                225   	jnb %0, %7
+                226   	clr P3.1
+                227   %7:	setb P3.0
+                228   	lcall delay100us
+                229   	jnb %0, %8
+                230   	clr P3.0
+                231   %8:	mov %10, P3
+                232   	mov %9, P3 ; R7
+                233   endmac
+0399            234   
+0399            235   StartUp: 
+0399 75817F     236            mov SP, #7FH ;          Set the stack pointer 
+039C 75E800     237            mov LEDRA, #0           ; Turn off all LEDs 
+039F 759500     238            mov LEDRB, #0 
+03A2 759E00     239            mov LEDRC, #0 
+03A5 75F800     240            mov LEDG, #0 
+03A8 759DFF     241            mov P3MOD, #11111111B ; Configure P3.0 to P3.7 as outputs 
+03AB 759C00     242            mov P2MOD, #00000000B
+03AE            243   
+03AE D2DB       244            setb LCD_ON
+03B0 C2D9       245            clr LCD_EN              ;Default state of enable must be zero
+03B2 120368     246            lcall Wait40us
+03B5            247   
+03B5 75DAFF     248            mov LCD_MOD, #0xff      ;Use LCD_DATA as output port
+03B8 C2D8       249            clr LCD_RW                      ;Only writing to the LCD in this code.
+03BA 740C       250            mov a, #0ch                     ;Display on command
+03BC 120373     251            lcall LCD_command
+03BF 7438       252            mov a, #38H                     ;8-bits interface, 2 lines, 5x7 characters
+03C1 120373     253            lcall LCD_command
+03C4            254     
+03C4            255   Loop:
+03C4 75B000     256            mov P3, #0
+03C7 D2A0       256            setb P2.0
+03C9 D2B7       256            setb P3.7
+03CB 1202A9     256            lcall delay100us
+03CE 30A002     256            jnb P2.0, N1
+03D1 C2B7       256            clr P3.7
+03D3 D2B6       256   N1:      setb P3.6
+03D5 1202A9     256            lcall delay100us
+03D8 30A002     256            jnb P2.0, N2
+03DB C2B6       256            clr P3.6
+03DD D2B5       256   N2:      setb P3.5
+03DF 1202A9     256            lcall delay100us
+03E2 30A002     256            jnb P2.0, N3
+03E5 C2B5       256            clr P3.5
+03E7 D2B4       256   N3:      setb P3.4
+03E9 1202A9     256            lcall delay100us
+03EC 30A002     256            jnb P2.0, N4
+03EF C2B4       256            clr P3.4
+03F1 D2B3       256   N4:      setb P3.3
+03F3 1202A9     256            lcall delay100us
+03F6 30A002     256            jnb P2.0, N5
+03F9 C2B3       256            clr P3.3
+03FB D2B2       256   N5:      setb P3.2
+03FD 1202A9     256            lcall delay100us
+0400 30A002     256            jnb P2.0, N6
+0403 C2B2       256            clr P3.2
+0405 D2B1       256   N6:      setb P3.1
+0407 1202A9     256            lcall delay100us
+040A 30A002     256            jnb P2.0, N7
+040D C2B1       256            clr P3.1
+040F D2B0       256   N7:      setb P3.0
+0411 1202A9     256            lcall delay100us
+0414 30A002     256            jnb P2.0, N8
+0417 C2B0       256            clr P3.0
+0419 85B0E8     256   N8:      mov LEDRA, P3
+041C AFB0       256            mov R7, P3 ; R7
+041E 1202A9     257            lcall delay100us
+0421 7480       258            mov a, #80H
+0423 120373     258            lcall LCD_command
+0426 8F33       258            mov x+0, R7
+0428 753400     258            mov x+1, #0
+042B E4         258            clr a
+042C EF         258            mov a, R7
+042D 1202B2     258            lcall VoltageVal
+0430 12004E     258            lcall hex2bcd
+0433 1202F6     258            lcall DisplayLCD
+0436 75B000     259            mov P3, #0
+0439 D2A2       259            setb P2.2
+043B D2B7       259            setb P3.7
+043D 1202A9     259            lcall delay100us
+0440 30A202     259            jnb P2.2, O1
+0443 C2B7       259            clr P3.7
+0445 D2B6       259   O1:      setb P3.6
+0447 1202A9     259            lcall delay100us
+044A 30A202     259            jnb P2.2, O2
+044D C2B6       259            clr P3.6
+044F D2B5       259   O2:      setb P3.5
+0451 1202A9     259            lcall delay100us
+0454 30A202     259            jnb P2.2, O3
+0457 C2B5       259            clr P3.5
+0459 D2B4       259   O3:      setb P3.4
+045B 1202A9     259            lcall delay100us
+045E 30A202     259            jnb P2.2, O4
+0461 C2B4       259            clr P3.4
+0463 D2B3       259   O4:      setb P3.3
+0465 1202A9     259            lcall delay100us
+0468 30A202     259            jnb P2.2, O5
+046B C2B3       259            clr P3.3
+046D D2B2       259   O5:      setb P3.2
+046F 1202A9     259            lcall delay100us
+0472 30A202     259            jnb P2.2, O6
+0475 C2B2       259            clr P3.2
+0477 D2B1       259   O6:      setb P3.1
+0479 1202A9     259            lcall delay100us
+047C 30A202     259            jnb P2.2, O7
+047F C2B1       259            clr P3.1
+0481 D2B0       259   O7:      setb P3.0
+0483 1202A9     259            lcall delay100us
+0486 30A202     259            jnb P2.2, O8
+0489 C2B0       259            clr P3.0
+048B 85B0F8     259   O8:      mov LEDG, P3
+048E AEB0       259            mov R6, P3 ; R7 
+0490 1202A9     260            lcall delay100us
+0493 74C0       261            mov a, #0C0H
+0495 120373     261            lcall LCD_command
+0498 8E33       261            mov x+0, R6
+049A 753400     261            mov x+1, #0
+049D E4         261            clr a
+049E EE         261            mov a, R6
+049F 1202B2     261            lcall VoltageVal
+04A2 12004E     261            lcall hex2bcd
+04A5 1202F6     261            lcall DisplayLCD
+04A8 0203C4     262            ljmp Loop 
+04AB            263   EN
