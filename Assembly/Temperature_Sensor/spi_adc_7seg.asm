@@ -18,6 +18,7 @@ DSEG at 30H
 x:       	ds 2
 y:      	ds 2
 bcd:		ds 3
+temperature1: ds 1
 
 BSEG
 
@@ -55,21 +56,6 @@ SendString:
     lcall putchar
     mov a, #'\n'
     lcall putchar
-    ret
-
-Display:
-	mov dptr, #myLUT
-	; Display Digit 0
-    mov A, bcd+0
-    anl a, #0fh
-    movc A, @A+dptr
-    mov HEX0, A
-	; Display Digit 1
-    mov A, bcd+0
-    swap a
-    anl a, #0fh
-    movc A, @A+dptr
-    mov HEX1, A
     ret
 
 Wait1Sec: 
@@ -189,6 +175,60 @@ WriteTemp:
         lcall LCD_put
         ret
         
+CheckDesiredTemp:  
+	  lcall ClearDisplay      
+      clr c
+      mov a, bcd+0
+      ;add a, #1
+      mov b, temperature1+0
+      subb a, b
+      jc M10
+      lcall Heat_off
+      sjmp M9
+M10:  lcall Heat_on
+M9:	  ret
+            
+ClearDisplay: 
+	mov HEX0, #0FFH
+	mov HEX1, #0FFH
+	mov HEX2, #0FFH
+	ret
+	
+Heat_on:
+	mov HEX1, #0C0H
+	mov HEX0, #2BH
+	ret
+
+Heat_off:
+	mov HEX2, #0C0H
+	mov HEX1, #0EH
+	mov HEX0, #0EH
+	ret
+	
+SetTemp:
+	jb KEY.1, M3
+    jnb KEY.1, $                                                        ;if KEY.1 is pressed, increment seconds
+    mov a, temperature1
+    add a, #1
+    da a
+    mov temperature1, a
+    ;cjne A, #100H, M3
+    ;mov temperature1, #0
+M3: mov dptr, #myLUT
+	; Display Digit 0
+    mov A, temperature1
+    anl a, #0fh
+    movc A, @A+dptr
+    mov HEX6, A
+	; Display Digit 1
+    mov A, temperature1
+    swap a
+    anl a, #0fh
+    movc A, @A+dptr
+    mov HEX7, A
+    jb SWA.0, SetTemp
+    ret
+    
 DisplayLCD:
     lcall WriteTemp
     mov dptr, #myASCII
@@ -260,30 +300,36 @@ ConvertVoltage:
 	; or (ADC*125/256)-273 (may overflow 16 bit operations)
 	; or (ADC*62/256)+(ADC*63/256)-273 (Does not overflow 16 bit operations!)
 	
-	;Load_y(62)
-	;lcall mul16
-	;mov R4, x+1
-
-	;mov x+1, R7
-	;mov x+0, R6
-
-	;Load_y(63)
-	;lcall mul16
-	;mov R5, x+1
+	Load_y(62)
+	lcall mul16
+	mov R4, x+1
 	
-	;mov x+0, R4
-	;mov x+1, #0
-	;mov y+0, R5
-	;mov y+1, #0
-	;lcall add16
+	mov x+1, R7
+	mov x+0, R6
+	mov a, x+1
+	jb acc.7, ChangeNegative 
+	clr a
 	
-	;Load_y(273)
-	;lcall sub16
+	Load_y(63)
+	lcall mul16
+	mov R5, x+1
+	
+	mov x+0, R4
+	mov x+1, #0
+	mov y+0, R5
+	mov y+1, #0
+	lcall add16
+	
+	Load_y(273)
+	lcall sub16
 	
 	lcall hex2bcd
 	lcall SendString
-	lcall Display 
+	;lcall Display 
 	ret
+
+ChangeNegative:
+	
 
 MyProgram:
 	mov sp, #07FH
@@ -308,6 +354,9 @@ MyProgram:
 	lcall LCD_command
 		
 Forever:
+	jnb SWA.0, M7
+	lcall setTemp
+M7:	lcall CheckDesiredTemp
 	lcall Read_ADC_Channel	
 	lcall ConvertVoltage
 	lcall DisplayLCD

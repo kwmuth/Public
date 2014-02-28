@@ -146,7 +146,7 @@
 0000            145   
 0000              2   
 0000              3   org 0000H
-0000 02034B       4      ljmp MyProgram
+0000 0203BF       4      ljmp MyProgram
 0003              5   
 0003              6   MISO   EQU  P0.0 
 0003              7   MOSI   EQU  P0.1 
@@ -163,305 +163,357 @@
 0030             18   x:               ds 2
 0032             19   y:               ds 2
 0034             20   bcd:             ds 3
-0037             21   
-0000             22   BSEG
-0000             23   
-0000             24   mf:     dbit 1
-0001             25   
-0003             26   CSEG
-0003             27   
+0037             21   temperature1: ds 1
+0038             22   
+0000             23   BSEG
+0000             24   
+0000             25   mf:     dbit 1
+0001             26   
+0003             27   CSEG
+0003             28   
                  -1   $include(math16.asm)
                 428   $LIST
-01DD             29   
-01DD             30   ; Look-up tables
-01DD             31   myLUT:
-01DD C0F9A4B0    32       DB 0C0H, 0F9H, 0A4H, 0B0H, 099H        ; 0 TO 4
+01DD             30   
+01DD             31   ; Look-up tables
+01DD             32   myLUT:
+01DD C0F9A4B0    33       DB 0C0H, 0F9H, 0A4H, 0B0H, 099H        ; 0 TO 4
      99
-01E2 9282F880    33       DB 092H, 082H, 0F8H, 080H, 090H        ; 4 TO 9
+01E2 9282F880    34       DB 092H, 082H, 0F8H, 080H, 090H        ; 4 TO 9
      90
-01E7             34       
-01E7             35   myASCII:
-01E7 30313233    36            DB 30H, 31H, 32H, 33H, 34H                      ; 0 TO 4
+01E7             35       
+01E7             36   myASCII:
+01E7 30313233    37            DB 30H, 31H, 32H, 33H, 34H                      ; 0 TO 4
      34
-01EC 35363738    37            DB 35H, 36H, 37H, 38H, 39H                      ; 4 TO 9
+01EC 35363738    38            DB 35H, 36H, 37H, 38H, 39H                      ; 4 TO 9
      39
-01F1 8883C6A1    38            DB 088H, 083H, 0C6H, 0A1H, 086H, 0FFH   ; A TO F
+01F1 8883C6A1    39            DB 088H, 083H, 0C6H, 0A1H, 086H, 0FFH   ; A TO F
      86FF
-01F7             39           
-01F7             40   
-01F7             41   SendString:
-01F7 9001E7      42            mov dptr, #myASCII
-01FA             43            ; Display Digit 1 ( Backwards because bits are recieved least to most significant )
-01FA E534        44       mov A, bcd+0
-01FC C4          45       swap a
-01FD 540F        46       anl a, #0fh
-01FF 93          47       movc A, @A+dptr
-0200 120335      48       lcall putchar
-0203             49            ; Display Digit 0
-0203 E534        50       mov A, bcd+0
-0205 540F        51       anl a, #0fh
-0207 93          52       movc A, @A+dptr
-0208 120335      53       lcall putchar
-020B 740D        54       mov a, #'\r'
-020D 120335      55       lcall putchar
-0210 740A        56       mov a, #'\n'
-0212 120335      57       lcall putchar
-0215 22          58       ret
-0216             59   
-0216             60   Display:
-0216 9001DD      61            mov dptr, #myLUT
-0219             62            ; Display Digit 0
-0219 E534        63       mov A, bcd+0
-021B 540F        64       anl a, #0fh
-021D 93          65       movc A, @A+dptr
-021E F591        66       mov HEX0, A
-0220             67            ; Display Digit 1
-0220 E534        68       mov A, bcd+0
-0222 C4          69       swap a
-0223 540F        70       anl a, #0fh
-0225 93          71       movc A, @A+dptr
-0226 F592        72       mov HEX1, A
-0228 22          73       ret
-0229             74   
-0229             75   Wait1Sec: 
-0229 7AB4        76            mov R2, #180 
-022B 79FA        77   L3: mov R1, #250
-022D 78FA        78   L2: mov R0, #250
-022F D8FE        79   L1: djnz R0, L1
-0231 D9FA        80            djnz R1, L2
-0233 DAF6        81            djnz R2, L3
-0235 22          82       ret
-0236             83   
-0236             84   INIT_SPI:
-0236 439A06      85       orl P0MOD, #00000110b ; Set SCLK, MOSI as outputs
-0239 539AFE      86       anl P0MOD, #11111110b ; Set MISO as input
-023C C282        87       clr SCLK              ; For mode (0,0) SCLK is zero
-023E 22          88            ret
-023F             89   
-023F             90   InitSerialPort:
-023F C2CA        91            clr TR2 ; Disable timer 2
-0241 75C830      92            mov T2CON, #30H ; RCLK=1, TCLK=1 
-0244 75CBFF      93            mov RCAP2H, #high(T2LOAD)  
-0247 75CAF7      94            mov RCAP2L, #low(T2LOAD)
-024A D2CA        95            setb TR2 ; Enable timer 2
-024C 759852      96            mov SCON, #52H
-024F 22          97            ret
-0250             98            
-0250             99   DO_SPI_G:
-0250 C0E0       100            push acc
-0252 7900       101       mov R1, #0            ; Received byte stored in R1
-0254 7A08       102       mov R2, #8            ; Loop counter (8-bits)
-0256            103   DO_SPI_G_LOOP:
-0256 E8         104       mov a, R0             ; Byte to write is in R0
-0257 33         105       rlc a                 ; Carry flag has bit to write
-0258 F8         106       mov R0, a
-0259 9281       107       mov MOSI, c
-025B D282       108       setb SCLK             ; Transmit
-025D A280       109       mov c, MISO           ; Read received bit
-025F E9         110       mov a, R1             ; Save received bit in R1
-0260 33         111       rlc a
-0261 F9         112       mov R1, a
-0262 C282       113       clr SCLK
-0264 DAF0       114       djnz R2, DO_SPI_G_LOOP
-0266 D0E0       115       pop acc
-0268 22         116       ret
-0269            117   
-0269            118   LCD_command:
-0269 F5D9       119           mov LCD_DATA, A
-026B C2DA       120           clr LCD_RS
-026D 00         121           nop
-026E 00         122           nop
-026F D2D9       123           setb LCD_EN        ;Enable pulse should be at least 230 ns
-0271 00         124           nop
-0272 00         125           nop
-0273 00         126           nop
-0274 00         127           nop
-0275 00         128           nop
-0276 00         129           nop
-0277 C2D9       130           clr LCD_EN
-0279 020307     131           ljmp Wait40us
-027C            132   
-027C            133   LCD_put:
-027C F5D9       134           mov LCD_DATA, A
-027E D2DA       135           setb LCD_RS
-0280 00         136           nop
-0281 00         137           nop
-0282 D2D9       138           setb LCD_EN        ;Enable pulse should be at least 230 ns
-0284 00         139           nop
-0285 00         140           nop
-0286 00         141           nop
-0287 00         142           nop
-0288 00         143           nop
-0289 00         144           nop
-028A C2D9       145           clr LCD_EN
-028C 020307     146           ljmp Wait40us
-028F            147   
-028F            148   ClearScreen:                ;Clears screen
-028F 7401       149           mov a, #01H 
-0291 120269     150           lcall LCD_command        
-0294 7928       151           mov R1, #40
-0296 12029A     152           lcall Clr_loop
-0299 22         153           ret
-029A            154   
-029A            155   Clr_loop:
-029A 120307     156           lcall Wait40us
-029D D9FB       157           djnz R1, Clr_loop
-029F 22         158           ret        
-02A0            159   
-02A0            160   WriteTemp:
-02A0 12028F     161                    lcall ClearScreen
-02A3 7480       162                    mov a, #80H
-02A5 120269     163           lcall LCD_command
-02A8 7454       164           mov a, #'T'
-02AA 12027C     165           lcall LCD_put
-02AD 7445       166           mov a, #'E'
-02AF 12027C     167           lcall LCD_put
-02B2 744D       168           mov a, #'M'
-02B4 12027C     169           lcall LCD_put
-02B7 7450       170           mov a, #'P'
-02B9 12027C     171           lcall LCD_put
-02BC 7445       172           mov a, #'E'
-02BE 12027C     173           lcall LCD_put
-02C1 7452       174           mov a, #'R'
-02C3 12027C     175           lcall LCD_put
-02C6 7441       176           mov a, #'A'
-02C8 12027C     177           lcall LCD_put
-02CB 7454       178           mov a, #'T'
-02CD 12027C     179           lcall LCD_put
-02D0 7455       180           mov a, #'U'
-02D2 12027C     181           lcall LCD_put
-02D5 7452       182           mov a, #'R'
-02D7 12027C     183           lcall LCD_put
-02DA 7445       184           mov a, #'E'
-02DC 12027C     185           lcall LCD_put
-02DF 743A       186           mov a, #':'
-02E1 12027C     187           lcall LCD_put
-02E4 7420       188           mov a, #' '
-02E6 12027C     189           lcall LCD_put
-02E9 22         190           ret
-02EA            191           
-02EA            192   DisplayLCD:
-02EA 1202A0     193       lcall WriteTemp
-02ED 9001E7     194       mov dptr, #myASCII
-02F0            195       ; Display Digit 0
-02F0 E534       196       mov A, bcd+0
-02F2 C4         197       swap a
-02F3 540F       198       anl a, #0fh
-02F5 93         199       movc A, @A+dptr
-02F6 12027C     200       lcall LCD_put
-02F9            201       ; Display Digit 1
-02F9 E534       202       mov A, bcd+0
-02FB 540F       203       anl a, #0fh
-02FD 93         204       movc A, @A+dptr
-02FE 12027C     205       lcall LCD_put
-0301            206       ; Display Units
-0301 7443       207       mov a, #'C'
-0303 12027C     208       lcall LCD_put
-0306 22         209       ret
-0307            210   
-0307            211   Wait40us:
-0307 7895       212       mov R0, #149
-0309            213   X1: 
-0309 00         214       nop
-030A 00         215       nop
-030B 00         216       nop
-030C 00         217       nop
-030D 00         218       nop
-030E 00         219       nop
-030F D8F8       220       djnz R0, X1        ;9 machine cycles-> 9*30ns*149=40us
-0311 22         221       ret
-0312            222   
-0312            223   ; Channel to read passed in register b
-0312            224   Read_ADC_Channel:
-0312 75F000     225            mov b, #0
-0315 C283       226            clr CE_ADC
-0317 7801       227            mov R0, #00000001B ; Start bit:1
-0319 120250     228            lcall DO_SPI_G
-031C            229            
-031C E5F0       230            mov a, b
-031E C4         231            swap a
-031F 54F0       232            anl a, #0F0H
-0321 D2E7       233            setb acc.7 ; Single mode (bit 7).
-0323            234            
-0323 F8         235            mov R0, a ;  Select channel
-0324 120250     236            lcall DO_SPI_G
-0327 E9         237            mov a, R1          ; R1 contains bits 8 and 9
-0328 5403       238            anl a, #03H
-032A FF         239            mov R7, a
-032B            240            
-032B 7855       241            mov R0, #55H ; It doesn't matter what we transmit...
-032D 120250     242            lcall DO_SPI_G
-0330 E9         243            mov a, R1    ; R1 contains bits 0 to 7
-0331 FE         244            mov R6, a
-0332 D283       245            setb CE_ADC
-0334 22         246            ret
-0335            247   
-0335            248   putchar:
-0335 3099FD     249       jnb TI, putchar
-0338 C299       250       clr TI
-033A F599       251       mov SBUF, a
-033C 22         252       ret
-033D            253            
-033D            254   ConvertVoltage:
-033D 8F31       255            mov x+1, R7
-033F 8E30       256            mov x+0, R6
-0341            257            
-0341            258            ; The temperature can be calculated as (ADC*500/1024)-273 (may overflow 16 bit operations)
-0341            259            ; or (ADC*250/512)-273 (may overflow 16 bit operations)
-0341            260            ; or (ADC*125/256)-273 (may overflow 16 bit operations)
-0341            261            ; or (ADC*62/256)+(ADC*63/256)-273 (Does not overflow 16 bit operations!)
-0341            262            
-0341            263            ;Load_y(62)
-0341            264            ;lcall mul16
-0341            265            ;mov R4, x+1
-0341            266   
-0341            267            ;mov x+1, R7
-0341            268            ;mov x+0, R6
-0341            269   
-0341            270            ;Load_y(63)
-0341            271            ;lcall mul16
-0341            272            ;mov R5, x+1
-0341            273            
-0341            274            ;mov x+0, R4
-0341            275            ;mov x+1, #0
-0341            276            ;mov y+0, R5
-0341            277            ;mov y+1, #0
-0341            278            ;lcall add16
-0341            279            
-0341            280            ;Load_y(273)
-0341            281            ;lcall sub16
-0341            282            
-0341 120003     283            lcall hex2bcd
-0344 1201F7     284            lcall SendString
-0347 120216     285            lcall Display 
-034A 22         286            ret
-034B            287   
-034B            288   MyProgram:
-034B 75817F     289            mov sp, #07FH
-034E E4         290            clr a
-034F F5F8       291            mov LEDG,  a
-0351 F5E8       292            mov LEDRA, a
-0353 F595       293            mov LEDRB, a
-0355 F59E       294            mov LEDRC, a
-0357 439A38     295            orl P0MOD, #00111000b ; make all CEs outputs    
-035A D283       296            setb CE_ADC
-035C 120236     297            lcall INIT_SPI
-035F 12023F     298            lcall InitSerialPort
-0362            299            
-0362 D2DB       300            setb LCD_ON
-0364 C2D9       301            clr LCD_EN                ;Default state of enable must be zero
-0366 120307     302            lcall Wait40us
-0369 75DAFF     303            mov LCD_MOD, #0xff        ;Use LCD_DATA as output port
-036C C2D8       304            clr LCD_RW                        ;Only writing to the LCD in this code.
-036E 740C       305            mov a, #0ch                        ;Display on command
-0370 120269     306            lcall LCD_command
-0373 7438       307            mov a, #38H                        ;8-bits interface, 2 lines, 5x7 characters
-0375 120269     308            lcall LCD_command
-0378            309                    
-0378            310   Forever:
-0378 120312     311            lcall Read_ADC_Channel  
-037B 12033D     312            lcall ConvertVoltage
-037E 1202EA     313            lcall DisplayLCD
-0381 120229     314            lcall Wait1Sec
-0384 80F2       315            sjmp Forever
-0386            316   EN
+01F7             40           
+01F7             41   
+01F7             42   SendString:
+01F7 9001E7      43            mov dptr, #myASCII
+01FA             44            ; Display Digit 1 ( Backwards because bits are recieved least to most significant )
+01FA E534        45       mov A, bcd+0
+01FC C4          46       swap a
+01FD 540F        47       anl a, #0fh
+01FF 93          48       movc A, @A+dptr
+0200 120376      49       lcall putchar
+0203             50            ; Display Digit 0
+0203 E534        51       mov A, bcd+0
+0205 540F        52       anl a, #0fh
+0207 93          53       movc A, @A+dptr
+0208 120376      54       lcall putchar
+020B 740D        55       mov a, #'\r'
+020D 120376      56       lcall putchar
+0210 740A        57       mov a, #'\n'
+0212 120376      58       lcall putchar
+0215 22          59       ret
+0216             60   
+0216             61   Wait1Sec: 
+0216 7AB4        62            mov R2, #180 
+0218 79FA        63   L3: mov R1, #250
+021A 78FA        64   L2: mov R0, #250
+021C D8FE        65   L1: djnz R0, L1
+021E D9FA        66            djnz R1, L2
+0220 DAF6        67            djnz R2, L3
+0222 22          68       ret
+0223             69   
+0223             70   INIT_SPI:
+0223 439A06      71       orl P0MOD, #00000110b ; Set SCLK, MOSI as outputs
+0226 539AFE      72       anl P0MOD, #11111110b ; Set MISO as input
+0229 C282        73       clr SCLK              ; For mode (0,0) SCLK is zero
+022B 22          74            ret
+022C             75   
+022C             76   InitSerialPort:
+022C C2CA        77            clr TR2 ; Disable timer 2
+022E 75C830      78            mov T2CON, #30H ; RCLK=1, TCLK=1 
+0231 75CBFF      79            mov RCAP2H, #high(T2LOAD)  
+0234 75CAF7      80            mov RCAP2L, #low(T2LOAD)
+0237 D2CA        81            setb TR2 ; Enable timer 2
+0239 759852      82            mov SCON, #52H
+023C 22          83            ret
+023D             84            
+023D             85   DO_SPI_G:
+023D C0E0        86            push acc
+023F 7900        87       mov R1, #0            ; Received byte stored in R1
+0241 7A08        88       mov R2, #8            ; Loop counter (8-bits)
+0243             89   DO_SPI_G_LOOP:
+0243 E8          90       mov a, R0             ; Byte to write is in R0
+0244 33          91       rlc a                 ; Carry flag has bit to write
+0245 F8          92       mov R0, a
+0246 9281        93       mov MOSI, c
+0248 D282        94       setb SCLK             ; Transmit
+024A A280        95       mov c, MISO           ; Read received bit
+024C E9          96       mov a, R1             ; Save received bit in R1
+024D 33          97       rlc a
+024E F9          98       mov R1, a
+024F C282        99       clr SCLK
+0251 DAF0       100       djnz R2, DO_SPI_G_LOOP
+0253 D0E0       101       pop acc
+0255 22         102       ret
+0256            103   
+0256            104   LCD_command:
+0256 F5D9       105           mov LCD_DATA, A
+0258 C2DA       106           clr LCD_RS
+025A 00         107           nop
+025B 00         108           nop
+025C D2D9       109           setb LCD_EN        ;Enable pulse should be at least 230 ns
+025E 00         110           nop
+025F 00         111           nop
+0260 00         112           nop
+0261 00         113           nop
+0262 00         114           nop
+0263 00         115           nop
+0264 C2D9       116           clr LCD_EN
+0266 020348     117           ljmp Wait40us
+0269            118   
+0269            119   LCD_put:
+0269 F5D9       120           mov LCD_DATA, A
+026B D2DA       121           setb LCD_RS
+026D 00         122           nop
+026E 00         123           nop
+026F D2D9       124           setb LCD_EN        ;Enable pulse should be at least 230 ns
+0271 00         125           nop
+0272 00         126           nop
+0273 00         127           nop
+0274 00         128           nop
+0275 00         129           nop
+0276 00         130           nop
+0277 C2D9       131           clr LCD_EN
+0279 020348     132           ljmp Wait40us
+027C            133   
+027C            134   ClearScreen:                ;Clears screen
+027C 7401       135           mov a, #01H 
+027E 120256     136           lcall LCD_command        
+0281 7928       137           mov R1, #40
+0283 120287     138           lcall Clr_loop
+0286 22         139           ret
+0287            140   
+0287            141   Clr_loop:
+0287 120348     142           lcall Wait40us
+028A D9FB       143           djnz R1, Clr_loop
+028C 22         144           ret        
+028D            145   
+028D            146   WriteTemp:
+028D 12027C     147                    lcall ClearScreen
+0290 7480       148                    mov a, #80H
+0292 120256     149           lcall LCD_command
+0295 7454       150           mov a, #'T'
+0297 120269     151           lcall LCD_put
+029A 7445       152           mov a, #'E'
+029C 120269     153           lcall LCD_put
+029F 744D       154           mov a, #'M'
+02A1 120269     155           lcall LCD_put
+02A4 7450       156           mov a, #'P'
+02A6 120269     157           lcall LCD_put
+02A9 7445       158           mov a, #'E'
+02AB 120269     159           lcall LCD_put
+02AE 7452       160           mov a, #'R'
+02B0 120269     161           lcall LCD_put
+02B3 7441       162           mov a, #'A'
+02B5 120269     163           lcall LCD_put
+02B8 7454       164           mov a, #'T'
+02BA 120269     165           lcall LCD_put
+02BD 7455       166           mov a, #'U'
+02BF 120269     167           lcall LCD_put
+02C2 7452       168           mov a, #'R'
+02C4 120269     169           lcall LCD_put
+02C7 7445       170           mov a, #'E'
+02C9 120269     171           lcall LCD_put
+02CC 743A       172           mov a, #':'
+02CE 120269     173           lcall LCD_put
+02D1 7420       174           mov a, #' '
+02D3 120269     175           lcall LCD_put
+02D6 22         176           ret
+02D7            177           
+02D7            178   CheckDesiredTemp:  
+02D7 1202ED     179              lcall ClearDisplay      
+02DA C3         180         clr c
+02DB E534       181         mov a, bcd+0
+02DD            182         ;add a, #1
+02DD 8537F0     183         mov b, temperature1+0
+02E0 95F0       184         subb a, b
+02E2 4005       185         jc M10
+02E4 1202FE     186         lcall Heat_off
+02E7 8003       187         sjmp M9
+02E9 1202F7     188   M10:  lcall Heat_on
+02EC 22         189   M9:        ret
+02ED            190               
+02ED            191   ClearDisplay: 
+02ED 7591FF     192            mov HEX0, #0FFH
+02F0 7592FF     193            mov HEX1, #0FFH
+02F3 7593FF     194            mov HEX2, #0FFH
+02F6 22         195            ret
+02F7            196            
+02F7            197   Heat_on:
+02F7 7592C0     198            mov HEX1, #0C0H
+02FA 75912B     199            mov HEX0, #2BH
+02FD 22         200            ret
+02FE            201   
+02FE            202   Heat_off:
+02FE 7593C0     203            mov HEX2, #0C0H
+0301 75920E     204            mov HEX1, #0EH
+0304 75910E     205            mov HEX0, #0EH
+0307 22         206            ret
+0308            207            
+0308            208   SetTemp:
+0308 20F90A     209            jb KEY.1, M3
+030B 30F9FD     210       jnb KEY.1, $                                                        ;if KEY.1 is pressed, increment seconds
+030E E537       211       mov a, temperature1
+0310 2401       212       add a, #1
+0312 D4         213       da a
+0313 F537       214       mov temperature1, a
+0315            215       ;cjne A, #100H, M3
+0315            216       ;mov temperature1, #0
+0315 9001DD     217   M3: mov dptr, #myLUT
+0318            218            ; Display Digit 0
+0318 E537       219       mov A, temperature1
+031A 540F       220       anl a, #0fh
+031C 93         221       movc A, @A+dptr
+031D F596       222       mov HEX6, A
+031F            223            ; Display Digit 1
+031F E537       224       mov A, temperature1
+0321 C4         225       swap a
+0322 540F       226       anl a, #0fh
+0324 93         227       movc A, @A+dptr
+0325 F597       228       mov HEX7, A
+0327 20E8DE     229       jb SWA.0, SetTemp
+032A 22         230       ret
+032B            231       
+032B            232   DisplayLCD:
+032B 12028D     233       lcall WriteTemp
+032E 9001E7     234       mov dptr, #myASCII
+0331            235       ; Display Digit 0
+0331 E534       236       mov A, bcd+0
+0333 C4         237       swap a
+0334 540F       238       anl a, #0fh
+0336 93         239       movc A, @A+dptr
+0337 120269     240       lcall LCD_put
+033A            241       ; Display Digit 1
+033A E534       242       mov A, bcd+0
+033C 540F       243       anl a, #0fh
+033E 93         244       movc A, @A+dptr
+033F 120269     245       lcall LCD_put
+0342            246       ; Display Units
+0342 7443       247       mov a, #'C'
+0344 120269     248       lcall LCD_put
+0347 22         249       ret
+0348            250   
+0348            251   Wait40us:
+0348 7895       252       mov R0, #149
+034A            253   X1: 
+034A 00         254       nop
+034B 00         255       nop
+034C 00         256       nop
+034D 00         257       nop
+034E 00         258       nop
+034F 00         259       nop
+0350 D8F8       260       djnz R0, X1        ;9 machine cycles-> 9*30ns*149=40us
+0352 22         261       ret
+0353            262   
+0353            263   ; Channel to read passed in register b
+0353            264   Read_ADC_Channel:
+0353 75F000     265            mov b, #0
+0356 C283       266            clr CE_ADC
+0358 7801       267            mov R0, #00000001B ; Start bit:1
+035A 12023D     268            lcall DO_SPI_G
+035D            269            
+035D E5F0       270            mov a, b
+035F C4         271            swap a
+0360 54F0       272            anl a, #0F0H
+0362 D2E7       273            setb acc.7 ; Single mode (bit 7).
+0364            274            
+0364 F8         275            mov R0, a ;  Select channel
+0365 12023D     276            lcall DO_SPI_G
+0368 E9         277            mov a, R1          ; R1 contains bits 8 and 9
+0369 5403       278            anl a, #03H
+036B FF         279            mov R7, a
+036C            280            
+036C 7855       281            mov R0, #55H ; It doesn't matter what we transmit...
+036E 12023D     282            lcall DO_SPI_G
+0371 E9         283            mov a, R1    ; R1 contains bits 0 to 7
+0372 FE         284            mov R6, a
+0373 D283       285            setb CE_ADC
+0375 22         286            ret
+0376            287   
+0376            288   putchar:
+0376 3099FD     289       jnb TI, putchar
+0379 C299       290       clr TI
+037B F599       291       mov SBUF, a
+037D 22         292       ret
+037E            293            
+037E            294   ConvertVoltage:
+037E 8F31       295            mov x+1, R7
+0380 8E30       296            mov x+0, R6
+0382            297            
+0382            298            ; The temperature can be calculated as (ADC*500/1024)-273 (may overflow 16 bit operations)
+0382            299            ; or (ADC*250/512)-273 (may overflow 16 bit operations)
+0382            300            ; or (ADC*125/256)-273 (may overflow 16 bit operations)
+0382            301            ; or (ADC*62/256)+(ADC*63/256)-273 (Does not overflow 16 bit operations!)
+0382            302            
+0382 75323E     303            mov y+0, #low (62) 
+0385 753300     303            mov y+1, #high(62) 
+0388 12010C     304            lcall mul16
+038B AC31       305            mov R4, x+1
+038D            306            
+038D 8F31       307            mov x+1, R7
+038F 8E30       308            mov x+0, R6
+0391 E531       309            mov a, x+1
+0393 20E729     310            jb acc.7, ChangeNegative 
+0396 E4         311            clr a
+0397            312            
+0397 75323F     313            mov y+0, #low (63) 
+039A 753300     313            mov y+1, #high(63) 
+039D 12010C     314            lcall mul16
+03A0 AD31       315            mov R5, x+1
+03A2            316            
+03A2 8C30       317            mov x+0, R4
+03A4 753100     318            mov x+1, #0
+03A7 8D32       319            mov y+0, R5
+03A9 753300     320            mov y+1, #0
+03AC 12008B     321            lcall add16
+03AF            322            
+03AF 753211     323            mov y+0, #low (273) 
+03B2 753301     323            mov y+1, #high(273) 
+03B5 1200A0     324            lcall sub16
+03B8            325            
+03B8 120003     326            lcall hex2bcd
+03BB 1201F7     327            lcall SendString
+03BE            328            ;lcall Display 
+03BE 22         329            ret
+03BF            330   
+03BF            331   ChangeNegative:
+03BF            332            
+03BF            333   
+03BF            334   MyProgram:
+03BF 75817F     335            mov sp, #07FH
+03C2 E4         336            clr a
+03C3 F5F8       337            mov LEDG,  a
+03C5 F5E8       338            mov LEDRA, a
+03C7 F595       339            mov LEDRB, a
+03C9 F59E       340            mov LEDRC, a
+03CB 439A38     341            orl P0MOD, #00111000b ; make all CEs outputs    
+03CE D283       342            setb CE_ADC
+03D0 120223     343            lcall INIT_SPI
+03D3 12022C     344            lcall InitSerialPort
+03D6            345            
+03D6 D2DB       346            setb LCD_ON
+03D8 C2D9       347            clr LCD_EN                ;Default state of enable must be zero
+03DA 120348     348            lcall Wait40us
+03DD 75DAFF     349            mov LCD_MOD, #0xff        ;Use LCD_DATA as output port
+03E0 C2D8       350            clr LCD_RW                        ;Only writing to the LCD in this code.
+03E2 740C       351            mov a, #0ch                        ;Display on command
+03E4 120256     352            lcall LCD_command
+03E7 7438       353            mov a, #38H                        ;8-bits interface, 2 lines, 5x7 characters
+03E9 120256     354            lcall LCD_command
+03EC            355                    
+03EC            356   Forever:
+03EC 30E803     357            jnb SWA.0, M7
+03EF 120308     358            lcall setTemp
+03F2 1202D7     359   M7:      lcall CheckDesiredTemp
+03F5 120353     360            lcall Read_ADC_Channel  
+03F8 12037E     361            lcall ConvertVoltage
+03FB 12032B     362            lcall DisplayLCD
+03FE 120216     363            lcall Wait1Sec
+0401 80E9       364            sjmp Forever
+0403            365   EN
